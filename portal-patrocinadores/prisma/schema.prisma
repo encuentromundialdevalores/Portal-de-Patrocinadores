@@ -1,0 +1,107 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  ADMIN
+  SPONSOR
+}
+
+enum MembershipLevel {
+  ALIADO
+  SEMBRADOR
+  CONSTRUCTOR
+  GUARDIAN
+  NONE
+}
+
+model Organization {
+  id           String   @id @default(uuid())
+  name         String   @unique
+  logoUrl      String?
+  primaryColor String?  @default("#000000")
+  domain       String?  @unique
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  users         User[]
+  subscriptions Subscription[]
+  metrics       Metric[]
+  content       Content[]
+}
+
+model User {
+  id             String          @id @default(uuid())
+  email          String          @unique
+  name           String?
+  role           Role            @default(SPONSOR)
+  organizationId String?
+  organization   Organization?   @relation(fields: [organizationId], references: [id])
+  membership     MembershipLevel @default(NONE)
+  
+  isActive       Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  // Información específica para patrocinadores
+  companyName    String?
+  phone          String?
+
+  contentLogs    ContentAccessLog[]
+}
+
+model Subscription {
+  id                   String       @id @default(uuid())
+  organizationId       String
+  organization         Organization @relation(fields: [organizationId], references: [id])
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  planName             String
+  status               String       // active, canceled, past_due
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime     @default(now())
+  updatedAt            DateTime     @updatedAt
+}
+
+model Content {
+  id                 String          @id @default(uuid())
+  title              String
+  description        String?
+  type               String          // VIDEO, PDF, REPORT
+  url                String          // URL S3 o ID YouTube Unlisted
+  organizationId     String
+  organization       Organization    @relation(fields: [organizationId], references: [id])
+  requiredMembership MembershipLevel @default(ALIADO)
+  unlockDate         DateTime?
+  isActive           Boolean         @default(true)
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  accessLogs         ContentAccessLog[]
+}
+
+model ContentAccessLog {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id])
+  contentId  String
+  content    Content  @relation(fields: [contentId], references: [id])
+  accessedAt DateTime @default(now())
+}
+
+model Metric {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  value          Int          @default(0)
+  updatedAt      DateTime     @updatedAt
+}
