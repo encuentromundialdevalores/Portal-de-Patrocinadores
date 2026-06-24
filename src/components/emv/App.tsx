@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { Eye, EyeOff, Globe, Users, BookOpen, Calendar, ArrowRight } from "lucide-react";
 import { motion } from "motion/react";
+import { signIn } from "next-auth/react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { Dashboard } from "./Dashboard";
 import Library from "./Library";
@@ -10,7 +11,6 @@ import { Membership } from "./Membership";
 import { Profile } from "./Profile";
 import { AdminDashboard } from "./AdminDashboard";
 import { SubscriptionPlans } from "./SubscriptionPlans";
-import { PaymentPage } from "./PaymentPage";
 import type { Page } from "./Sidebar";
 const emvLogo = "/imports/EMV_XVIII-Blanco.png";
 
@@ -330,10 +330,7 @@ function RegisterPanel({ onRegisterComplete }: { onRegisterComplete: (name: stri
 
   const handleGoogle = () => {
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      onRegisterComplete("Usuario Google", "usuario@gmail.com");
-    }, 1200);
+    signIn("google", { callbackUrl: "/planes" });
   };
 
   return (
@@ -482,7 +479,7 @@ function AuthPanel({ onLogin, onAdminLogin, onRegisterComplete }: {
 
   const handleGoogleLogin = () => {
     setIsLoading(true);
-    setTimeout(() => { setIsLoading(false); onLogin("Constructor"); }, 1200);
+    signIn("google", { callbackUrl: "/planes" });
   };
 
   return (
@@ -719,14 +716,23 @@ function AuthPanel({ onLogin, onAdminLogin, onRegisterComplete }: {
 
 type AppView = "auth" | "plans" | "payment" | "portal" | "admin";
 
-export default function App() {
-  const [view, setView] = useState<AppView>("auth");
-  const [userTier, setUserTier] = useState<TierName>("Constructor");
+export default function App({ initialView = "auth", initialTier = "Constructor" }: { initialView?: AppView, initialTier?: string }) {
+  const [view, setView] = useState<AppView>(initialView);
+  const [userTier, setUserTier] = useState<TierName>(initialTier as TierName);
   const [page, setPage] = useState<Page>("dashboard");
   const [pendingUser, setPendingUser] = useState({ name: "", email: "" });
   const [selectedPlan, setSelectedPlan] = useState<{ key: string; name: string; price: number; annual: boolean } | null>(null);
 
-  const handleLogout = () => { setView("auth"); setPage("dashboard"); };
+  useEffect(() => {
+    setView(initialView);
+    setUserTier(initialTier as TierName);
+  }, [initialView, initialTier]);
+
+  const handleLogout = () => { 
+    import("next-auth/react").then(({ signOut }) => signOut({ callbackUrl: "/" }));
+    setView("auth"); 
+    setPage("dashboard"); 
+  };
 
   return (
     <>
@@ -755,16 +761,7 @@ export default function App() {
       ) : view === "plans" ? (
         <SubscriptionPlans
           userName={pendingUser.name}
-          onSelectPlan={(plan) => { setSelectedPlan(plan); setView("payment"); }}
           onBack={() => setView("portal")}
-        />
-      ) : view === "payment" && selectedPlan ? (
-        <PaymentPage
-          plan={selectedPlan}
-          userName={pendingUser.name}
-          userEmail={pendingUser.email}
-          onBack={() => setView("plans")}
-          onComplete={() => { setUserTier("Constructor"); setView("portal"); }}
         />
       ) : page === "library" ? (
         <Library onNavigate={(p: any) => setPage(p)} onLogout={handleLogout} onUpgrade={() => setView("plans")} />

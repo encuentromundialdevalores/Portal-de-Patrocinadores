@@ -143,7 +143,7 @@ function TopBar({ onShowNotifications }: { onShowNotifications?: () => void }) {
 }
 
 function HeroSection({ userTier }: { userTier: TierKey }) {
-  const meta = TIER_META[userTier];
+  const meta = TIER_META[userTier as TierKey] || TIER_META["Aliado"];
   return (
     <div
       className="relative overflow-hidden rounded-2xl"
@@ -519,7 +519,7 @@ const TIER_LEVEL: Record<string, number> = {
 function ContentModal({ item, onClose, userTier }: { item: ContentItem | null; onClose: () => void; userTier: TierKey }) {
   if (!item) return null;
   const tierLevel = TIER_LEVEL[item.tier];
-  const userLevel = TIER_META[userTier].level;
+  const userLevel = (TIER_META[userTier as TierKey] || TIER_META["Aliado"]).level;
   const isLocked  = tierLevel > userLevel;
   const color = item.color;
 
@@ -751,10 +751,11 @@ function NotificationsModal({ onClose }: { onClose: () => void }) {
 }
 
 function MembershipJourney({ userTier, onUpgrade }: { userTier: TierKey; onUpgrade?: () => void }) {
-  const currentLevel  = TIER_META[userTier].level;
-  const currentColor  = TIER_META[userTier].color;
+  const meta = TIER_META[userTier as TierKey] || TIER_META["Aliado"];
+  const currentLevel  = meta.level;
+  const currentColor  = meta.color;
   const nextTier      = TIER_ORDER[currentLevel] as TierKey | undefined; // next index
-  const progress      = TIER_META[userTier].progressPct;
+  const progress      = meta.progressPct;
 
   return (
     <div style={{

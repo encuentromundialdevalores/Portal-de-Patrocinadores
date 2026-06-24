@@ -115,15 +115,31 @@ const allFeatures = [
   { name: "Certificación como Empresa Compasiva", aliado: "—", sembrador: "—", constructor: "50% Descuento", guardian: "Sí" },
 ];
 
+import { createCheckoutSessionAction } from "@/app/planes/actions";
+
 interface SubscriptionPlansProps {
   userName?: string;
-  onSelectPlan: (plan: { key: string; name: string; price: number; annual: boolean }) => void;
+  onSelectPlan?: (plan: { key: string; name: string; price: number; annual: boolean }) => void; // Ya no es requerido, pero lo dejamos opcional
   onBack: () => void;
 }
 
 export function SubscriptionPlans({ userName, onSelectPlan, onBack }: SubscriptionPlansProps) {
   const [annual, setAnnual] = useState(true);
   const [hovered, setHovered] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState<string | null>(null);
+
+  const handleSelectPlan = async (plan: { key: string; name: string; price: number; annual: boolean }) => {
+    setIsLoading(plan.key);
+    try {
+      const result = await createCheckoutSessionAction(plan);
+      if (result.url) {
+        window.location.href = result.url;
+      }
+    } catch (error: any) {
+      alert(error.message);
+      setIsLoading(null);
+    }
+  };
 
   return (
     <div
@@ -351,24 +367,25 @@ export function SubscriptionPlans({ userName, onSelectPlan, onBack }: Subscripti
                   )}
                 </div>
 
-                {/* CTA */}
                 <button
-                  onClick={() => onSelectPlan({ key: plan.key, name: plan.name, price, annual })}
+                  onClick={() => handleSelectPlan({ key: plan.key, name: plan.name, price, annual })}
+                  disabled={isLoading !== null}
                   style={{
                     width: "100%", padding: "12px 20px", borderRadius: 10, border: "none",
                     background: isPopular
                       ? "linear-gradient(90deg, #6366F1, #8B5CF6)"
                       : isHovered ? plan.color : `${plan.color}25`,
                     color: isPopular || isHovered ? "white" : plan.color,
-                    fontSize: 14, fontWeight: 700, cursor: "pointer",
+                    fontSize: 14, fontWeight: 700, cursor: isLoading ? "not-allowed" : "pointer",
                     transition: "all 0.2s",
                     display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
                     fontFamily: "var(--font-display)",
                     marginBottom: 20,
                     boxShadow: (isPopular || isHovered) ? `0 4px 16px ${plan.color}40` : "none",
+                    opacity: isLoading && isLoading !== plan.key ? 0.5 : 1
                   }}
                 >
-                  Elegir {plan.name} <ArrowRight size={15} />
+                  {isLoading === plan.key ? "Procesando..." : `Elegir ${plan.name}`} {!isLoading && <ArrowRight size={15} />}
                 </button>
 
                 <div style={{ height: 1, background: "rgba(255,255,255,0.07)", marginBottom: 18 }} />

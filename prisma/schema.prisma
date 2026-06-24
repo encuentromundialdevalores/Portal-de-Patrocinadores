@@ -3,9 +3,7 @@ generator client {
 }
 
 datasource db {
-  provider  = "postgresql"
-  url       = env("DATABASE_URL")
-  directUrl = env("DIRECT_URL")
+  provider = "postgresql"
 }
 
 enum Role {
@@ -22,6 +20,12 @@ enum MembershipLevel {
   NONE
 }
 
+enum DeliverableStatus {
+  PENDING
+  DELIVERED
+  APPROVED
+}
+
 model Organization {
   id           String   @id @default(uuid())
   name         String   @unique
@@ -36,26 +40,35 @@ model Organization {
   subscriptions Subscription[]
   metrics       Metric[]
   content       Content[]
+  deliverables  Deliverable[]
+  tickets       Ticket[]
+  brandAssets   BrandAsset[]
 }
 
 model User {
   id             String          @id @default(uuid())
   email          String          @unique
+  emailVerified  DateTime?
   name           String?
+  image          String?
   role           Role            @default(SPONSOR)
   organizationId String?
   organization   Organization?   @relation(fields: [organizationId], references: [id])
   membership     MembershipLevel @default(NONE)
-  
-  isActive       Boolean  @default(true)
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   // Información específica para patrocinadores
-  companyName    String?
-  phone          String?
+  companyName String?
+  phone       String?
 
-  contentLogs    ContentAccessLog[]
+  contentLogs   ContentAccessLog[]
+  tickets       Ticket[]
+  accounts      Account[]
+  sessions      Session[]
+  Authenticator Authenticator[]
 }
 
 model Subscription {
@@ -65,7 +78,7 @@ model Subscription {
   stripeCustomerId     String?
   stripeSubscriptionId String?
   planName             String
-  status               String       // active, canceled, past_due
+  status               String // active, canceled, past_due
   currentPeriodEnd     DateTime?
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
@@ -75,8 +88,8 @@ model Content {
   id                 String          @id @default(uuid())
   title              String
   description        String?
-  type               String          // VIDEO, PDF, REPORT
-  url                String          // URL S3 o ID YouTube Unlisted
+  type               String // VIDEO, PDF, REPORT
+  url                String // URL S3 o ID YouTube Unlisted
   organizationId     String
   organization       Organization    @relation(fields: [organizationId], references: [id])
   requiredMembership MembershipLevel @default(ALIADO)
@@ -85,7 +98,7 @@ model Content {
   createdAt          DateTime        @default(now())
   updatedAt          DateTime        @updatedAt
 
-  accessLogs         ContentAccessLog[]
+  accessLogs ContentAccessLog[]
 }
 
 model ContentAccessLog {
@@ -104,4 +117,108 @@ model Metric {
   name           String
   value          Int          @default(0)
   updatedAt      DateTime     @updatedAt
+}
+
+model Event {
+  id        String   @id @default(uuid())
+  name      String
+  date      DateTime
+  location  String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  deliverables Deliverable[]
+  tickets      Ticket[]
+}
+
+model Deliverable {
+  id             String            @id @default(uuid())
+  organizationId String
+  organization   Organization      @relation(fields: [organizationId], references: [id])
+  eventId        String?
+  event          Event?            @relation(fields: [eventId], references: [id])
+  name           String
+  description    String?
+  status         DeliverableStatus @default(PENDING)
+  dueDate        DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+}
+
+model Ticket {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  eventId        String?
+  event          Event?       @relation(fields: [eventId], references: [id])
+  userId         String?
+  user           User?        @relation(fields: [userId], references: [id])
+  ticketType     String
+  qrCode         String?
+  isClaimed      Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model BrandAsset {
+  id             String       @id @default(uuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  name           String
+  fileUrl        String
+  fileType       String
+  isApproved     Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+model Account {
+  id                String  @id @default(uuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Authenticator {
+  credentialID         String  @unique
+  userId               String
+  providerAccountId    String
+  credentialPublicKey  String
+  counter              Int
+  credentialDeviceType String
+  credentialBackedUp   Boolean
+  transports           String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, credentialID])
 }
