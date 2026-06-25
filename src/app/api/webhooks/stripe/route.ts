@@ -65,7 +65,7 @@ export async function POST(req: NextRequest) {
         await tx.user.update({
           where: { email: userEmail },
           data: {
-            membership: planKey,
+            membership: planKey.toUpperCase() as import("@prisma/client").MembershipLevel,
             organizationId: orgId,
           },
         });
