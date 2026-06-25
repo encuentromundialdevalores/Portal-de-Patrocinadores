@@ -13,7 +13,7 @@ import {
   ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell,
 } from "recharts";
 import { createContext, useContext, useEffect } from "react";
-import { getAdminDashboardData } from "@/app/actions";
+import { getAdminDashboardData, getSubscriptions, getComments, createNotification } from "@/app/actions";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { SponsorManagement } from "./SponsorManagement";
 const emvLogo = "/imports/EMV_XVIII-Blanco.png";
@@ -29,7 +29,7 @@ const BG      = "#F0F2F5";
 const SIDEBAR_W = 228;
 
 type AdminPage =
-  | "dashboard" | "patrocinadores" | "contenido"
+  | "dashboard" | "patrocinadores" | "suscripciones" | "contenido"
   | "reportes" | "metricas" | "notificaciones"
   | "comentarios" | "configuracion";
 
@@ -48,11 +48,12 @@ const tt = {
 
 const NAV: { icon: React.ElementType; label: string; page: AdminPage; badge?: number }[] = [
   { icon: LayoutDashboard, label: "Dashboard",       page: "dashboard"       },
-  { icon: Users,           label: "Patrocinadores",  page: "patrocinadores", badge: 2 },
+  { icon: Users,           label: "Patrocinadores",  page: "patrocinadores"  },
+  { icon: DollarSign,      label: "Suscripciones",   page: "suscripciones"   },
   { icon: BookOpen,        label: "Contenido",       page: "contenido"       },
   { icon: FileText,        label: "Reportes",        page: "reportes"        },
   { icon: Activity,        label: "Métricas",        page: "metricas"        },
-  { icon: Bell,            label: "Notificaciones",  page: "notificaciones", badge: 3 },
+  { icon: Bell,            label: "Notificaciones",  page: "notificaciones"  },
   { icon: MessageSquare,   label: "Comentarios",     page: "comentarios"     },
   { icon: Settings,        label: "Configuración",   page: "configuracion"   },
 ];
@@ -350,8 +351,20 @@ function SponsorsTable() {
                   </span>
                 </td>
                 <td style={{ padding: "12px 16px" }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", fontFamily: "var(--font-display)" }}>$0</span>
-                  <span style={{ fontSize: 11, color: "#9CA3AF", fontFamily: "var(--font-sans)" }}>/mes</span>
+                  {(() => {
+                    const sub = s.subscriptions?.[0];
+                    const monthly = sub?.amount
+                      ? Math.round((sub.interval === "year" ? sub.amount / 12 : sub.amount) / 100)
+                      : 0;
+                    return (
+                      <>
+                        <span style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", fontFamily: "var(--font-display)" }}>
+                          ${monthly.toLocaleString("es-MX")}
+                        </span>
+                        <span style={{ fontSize: 11, color: "#9CA3AF", fontFamily: "var(--font-sans)" }}>/mes</span>
+                      </>
+                    );
+                  })()}
                 </td>
                 <td style={{ padding: "12px 16px" }}><StatusPill status={s.isActive ? "activo" : "inactivo"} /></td>
                 <td style={{ padding: "12px 16px" }}>
@@ -604,24 +617,32 @@ function ChartsSection() {
 // ── Revenue chart ─────────────────────────────────────────────────────────────
 
 function RevenueChart() {
+  const data = useContext(AdminDataContext);
+  const mrr = Math.round((data?.mrrCents || 0) / 100);
+  const annual = mrr * 12;
+  const active = data?.activeSubscriptions || 0;
+
   return (
     <Card style={{ marginBottom: 20 }}>
       <SectionHeader
-        title="Ingresos Mensuales"
-        sub="Evolución (MXN)"
-        action={
-          <div style={{ display: "flex", gap: 8 }}>
-            <button style={{
-              padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
-              background: BLUE, color: "white", cursor: "pointer", fontFamily: "var(--font-sans)", border: "none"
-            }}>
-              1M
-            </button>
-          </div>
-        }
+        title="Ingresos por Suscripciones"
+        sub="Calculado desde Stripe (MXN)"
       />
-      <div style={{ padding: "8px 20px 20px", display: "flex", justifyContent: "center", alignItems: "center", height: 180, color: "#9CA3AF", fontSize: 12 }}>
-        Requiere históricos en BD
+      <div style={{ padding: "16px 20px 22px", display: "flex", gap: 16, flexWrap: "wrap" }}>
+        {[
+          { label: "Ingreso Mensual Recurrente (MRR)", value: `$${mrr.toLocaleString("es-MX")}`, sub: "MXN / mes", color: GREEN },
+          { label: "Proyección Anual (ARR)", value: `$${annual.toLocaleString("es-MX")}`, sub: "MXN / año", color: BLUE },
+          { label: "Suscripciones Activas", value: active.toString(), sub: "aliados pagando", color: PURPLE },
+        ].map((m) => (
+          <div key={m.label} style={{
+            flex: 1, minWidth: 160, padding: "16px 18px", borderRadius: 12,
+            background: `${m.color}08`, border: `1px solid ${m.color}22`,
+          }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: "#6B7280", fontFamily: "var(--font-sans)", marginBottom: 8 }}>{m.label}</div>
+            <div style={{ fontSize: 24, fontWeight: 800, color: "#1F2937", fontFamily: "var(--font-display)" }}>{m.value}</div>
+            <div style={{ fontSize: 11, color: m.color, fontFamily: "var(--font-sans)", marginTop: 2 }}>{m.sub}</div>
+          </div>
+        ))}
       </div>
     </Card>
   );
@@ -631,9 +652,9 @@ function RevenueChart() {
 
 function TopBar({ page, setPage, onNewContent }: { page: AdminPage; setPage: (p: AdminPage) => void; onNewContent?: () => void }) {
   const labels: Record<AdminPage, string> = {
-    dashboard: "Dashboard", patrocinadores: "Patrocinadores", contenido: "Contenido",
-    reportes: "Reportes", metricas: "Métricas", notificaciones: "Notificaciones",
-    comentarios: "Comentarios", configuracion: "Configuración",
+    dashboard: "Dashboard", patrocinadores: "Patrocinadores", suscripciones: "Suscripciones",
+    contenido: "Contenido", reportes: "Reportes", metricas: "Métricas",
+    notificaciones: "Notificaciones", comentarios: "Comentarios", configuracion: "Configuración",
   };
   const hideToolbar = page === "patrocinadores";
   return (
@@ -733,8 +754,10 @@ function PlaceholderPage({ title, icon: Icon, color }: { title: string; icon: Re
 function DashboardContent() {
   const data = useContext(AdminDataContext);
   
+  const mrr = Math.round((data?.mrrCents || 0) / 100);
   const kpis = [
     { label: "Total Patrocinadores", value: (data?.totalUsers || 0).toString(),        delta: "0%", positive: true,  icon: Users,        color: BLUE,    bg: `${BLUE}10`,    sub: undefined },
+    { label: "Ingreso Mensual (MRR)", value: `$${mrr.toLocaleString("es-MX")}`,         delta: `${data?.activeSubscriptions || 0} activas`,  positive: true,  icon: TrendingUp,   color: GREEN,   bg: `${GREEN}10`,   sub: "MXN/mes" },
     { label: "Organizaciones Activas",      value: (data?.activeOrganizations || 0).toString(),         delta: "0%",  positive: true,  icon: Globe,        color: BLUE,    bg: `${BLUE}10`,    sub: undefined },
     { label: "Contenido activo",     value: (data?.totalContent || 0).toString(),         delta: "0%",  positive: true,  icon: BookOpen,     color: PURPLE,  bg: `${PURPLE}10`,  sub: undefined },
   ];
@@ -862,17 +885,40 @@ function MetricasPage() {
 }
 
 function NotificacionesPage() {
+  const [message, setMessage] = useState("");
+  const [title, setTitle] = useState("");
+  const [sending, setSending] = useState(false);
+  const [feedback, setFeedback] = useState<string | null>(null);
+
+  const handleSend = async () => {
+    if (!message.trim()) return;
+    setSending(true);
+    setFeedback(null);
+    const res = await createNotification(title, message);
+    setSending(false);
+    if (res.success) {
+      setMessage("");
+      setTitle("");
+      setFeedback("Notificación enviada. Recarga para verla en el feed.");
+    } else {
+      setFeedback(res.error || "No se pudo enviar");
+    }
+  };
+
   return (
     <div style={{ display: "grid", gap: 20, gridTemplateColumns: "1fr 300px" }}>
       <NotificationsFeed />
       <Card>
         <SectionHeader title="Nueva Notificación" sub="Enviar a aliados" />
         <div style={{ padding: "16px 20px" }}>
+          <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6, fontFamily: "var(--font-sans)" }}>Título</label>
+          <input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Título (opcional)" style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, fontFamily: "var(--font-sans)", outline: "none", marginBottom: 12 }} />
           <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#374151", marginBottom: 6, fontFamily: "var(--font-sans)" }}>Mensaje</label>
-          <textarea rows={4} placeholder="Escribe el mensaje aquí..." style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, fontFamily: "var(--font-sans)", outline: "none", resize: "none", marginBottom: 12 }} />
-          <button style={{ width: "100%", padding: "8px 16px", borderRadius: 8, border: "none", background: BLUE, color: "white", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "var(--font-display)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
-            <Send size={14} /> Enviar notificación
+          <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} placeholder="Escribe el mensaje aquí..." style={{ width: "100%", padding: "10px", borderRadius: 8, border: "1px solid #D1D5DB", fontSize: 13, fontFamily: "var(--font-sans)", outline: "none", resize: "none", marginBottom: 12 }} />
+          <button onClick={handleSend} disabled={sending || !message.trim()} style={{ width: "100%", padding: "8px 16px", borderRadius: 8, border: "none", background: sending || !message.trim() ? "#9CA3AF" : BLUE, color: "white", fontSize: 12, fontWeight: 700, cursor: sending || !message.trim() ? "not-allowed" : "pointer", fontFamily: "var(--font-display)", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}>
+            <Send size={14} /> {sending ? "Enviando..." : "Enviar notificación"}
           </button>
+          {feedback && <div style={{ marginTop: 10, fontSize: 11, color: "#6B7280", fontFamily: "var(--font-sans)" }}>{feedback}</div>}
         </div>
       </Card>
     </div>
@@ -880,34 +926,97 @@ function NotificacionesPage() {
 }
 
 function ComentariosPage() {
-  const comentarios = [
-    { id: 1, user: "Juan Pérez", empresa: "Banorte", msg: "Excelente el webinar de liderazgo.", date: "Hace 2 horas" },
-    { id: 2, user: "Ana Gómez", empresa: "Femsa", msg: "¿Cuándo publican el reporte anual?", date: "Ayer" },
-    { id: 3, user: "Luis Torres", empresa: "CEMEX", msg: "Tuvimos problemas para descargar el certificado.", date: "Hace 2 días" },
-  ];
+  const [comentarios, setComentarios] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getComments().then((res) => {
+      if (res.success && res.data) setComentarios(res.data);
+      setLoading(false);
+    });
+  }, []);
 
   return (
     <Card>
       <SectionHeader title="Comentarios y Retroalimentación" sub="Mensajes de la comunidad" />
       <div>
+        {loading && <div style={{ padding: "20px", textAlign: "center", fontSize: 12, color: "#9CA3AF" }}>Cargando...</div>}
+        {!loading && comentarios.length === 0 && (
+          <div style={{ padding: "24px", textAlign: "center", fontSize: 13, color: "#9CA3AF", fontFamily: "var(--font-sans)" }}>
+            Aún no hay comentarios de la comunidad.
+          </div>
+        )}
         {comentarios.map((c, i) => (
           <div key={c.id} style={{ display: "flex", alignItems: "flex-start", gap: 14, padding: "16px 20px", borderBottom: i < comentarios.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none" }}>
             <div style={{ width: 36, height: 36, borderRadius: "50%", background: `${BLUE}12`, display: "flex", alignItems: "center", justifyContent: "center", color: BLUE, fontWeight: 700, fontSize: 14 }}>
-              {c.user.charAt(0)}
+              {(c.user || "?").charAt(0)}
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
                 <span style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", fontFamily: "var(--font-display)" }}>{c.user} <span style={{ fontWeight: 400, color: "#6B7280" }}>({c.empresa})</span></span>
-                <span style={{ fontSize: 11, color: "#9CA3AF", fontFamily: "var(--font-sans)" }}>{c.date}</span>
+                <span style={{ fontSize: 11, color: "#9CA3AF", fontFamily: "var(--font-sans)" }}>{new Date(c.createdAt).toLocaleDateString()}</span>
               </div>
               <p style={{ margin: 0, fontSize: 13, color: "#4B5563", fontFamily: "var(--font-sans)", lineHeight: 1.5 }}>{c.msg}</p>
-              <div style={{ marginTop: 8, display: "flex", gap: 8 }}>
-                <button style={{ fontSize: 11, fontWeight: 600, color: BLUE, background: "none", border: "none", cursor: "pointer" }}>Responder</button>
-                <button style={{ fontSize: 11, fontWeight: 600, color: "#EF4444", background: "none", border: "none", cursor: "pointer" }}>Eliminar</button>
-              </div>
             </div>
           </div>
         ))}
+      </div>
+    </Card>
+  );
+}
+
+function SuscripcionesPage() {
+  const [subs, setSubs] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getSubscriptions().then((res) => {
+      if (res.success && res.data) setSubs(res.data);
+      setLoading(false);
+    });
+  }, []);
+
+  const fmtMoney = (amount: number | null, interval: string | null) => {
+    if (!amount) return "—";
+    const val = Math.round(amount / 100);
+    return `$${val.toLocaleString("es-MX")} ${interval === "year" ? "/año" : "/mes"}`;
+  };
+
+  return (
+    <Card>
+      <SectionHeader title="Suscripciones" sub="Pagos recurrentes vía Stripe" />
+      <div style={{ overflowX: "auto" }}>
+        <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <thead>
+            <tr style={{ background: "#F9FAFB" }}>
+              {["Empresa", "Contacto", "Plan", "Monto", "Estado", "Renovación", "Inicio"].map((h) => (
+                <th key={h} style={{ padding: "10px 16px", textAlign: "left", fontSize: 11, fontWeight: 600, color: "#9CA3AF", fontFamily: "var(--font-sans)", borderBottom: "1px solid rgba(0,0,0,0.05)", whiteSpace: "nowrap" }}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {loading && <tr><td colSpan={7} style={{ padding: "20px", textAlign: "center", fontSize: 12, color: "#9CA3AF" }}>Cargando...</td></tr>}
+            {!loading && subs.length === 0 && (
+              <tr><td colSpan={7} style={{ padding: "24px", textAlign: "center", fontSize: 13, color: "#9CA3AF" }}>Aún no hay suscripciones registradas.</td></tr>
+            )}
+            {subs.map((s, i) => (
+              <tr key={s.id} style={{ borderBottom: i < subs.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none" }}>
+                <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 600, color: "#1F2937", fontFamily: "var(--font-sans)" }}>{s.organizationName}</td>
+                <td style={{ padding: "12px 16px" }}>
+                  <div style={{ fontSize: 12, color: "#374151" }}>{s.contactName}</div>
+                  <div style={{ fontSize: 11, color: "#9CA3AF" }}>{s.contactEmail}</div>
+                </td>
+                <td style={{ padding: "12px 16px" }}>
+                  <span style={{ display: "inline-block", padding: "2px 8px", borderRadius: 99, background: `${BLUE}12`, border: `1px solid ${BLUE}22`, color: BLUE, fontSize: 10, fontWeight: 700, textTransform: "capitalize", fontFamily: "var(--font-display)" }}>{s.planName}</span>
+                </td>
+                <td style={{ padding: "12px 16px", fontSize: 13, fontWeight: 700, color: "#1F2937", fontFamily: "var(--font-display)" }}>{fmtMoney(s.amount, s.interval)}</td>
+                <td style={{ padding: "12px 16px" }}><StatusPill status={s.status === "active" ? "activo" : s.status === "canceled" ? "inactivo" : "pendiente"} /></td>
+                <td style={{ padding: "12px 16px", fontSize: 12, color: "#6B7280", fontFamily: "var(--font-sans)" }}>{s.currentPeriodEnd ? new Date(s.currentPeriodEnd).toLocaleDateString() : "—"}</td>
+                <td style={{ padding: "12px 16px", fontSize: 12, color: "#6B7280", fontFamily: "var(--font-sans)" }}>{new Date(s.createdAt).toLocaleDateString()}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </Card>
   );
@@ -948,6 +1057,7 @@ export function AdminDashboard({ onBack }: Props) {
             <SponsorManagement />
           </div>
         )}
+        {page === "suscripciones" && <SuscripcionesPage />}
         {page === "contenido" && <ContenidoPage />}
         {page === "reportes" && <ReportesPage />}
         {page === "metricas" && <MetricasPage />}

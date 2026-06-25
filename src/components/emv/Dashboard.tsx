@@ -10,7 +10,7 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { createContext, useContext, useEffect } from "react";
-import { getUserDashboardData } from "@/app/actions";
+import { getUserDashboardData, getUserNotifications } from "@/app/actions";
 
 const EMV_BLUE = "#29ABE2";
 const EMV_ORANGE = "#F7941D";
@@ -568,12 +568,23 @@ function ContentModal({ item, onClose, userTier }: { item: any | null; onClose: 
 }
 
 // Modal de notificaciones
-function NotificationsModal({ onClose }: { onClose: () => void }) {
-  const notifications = [
-    { id: 1, title: "Nuevo contenido disponible", message: "Se ha publicado un nuevo webinar sobre liderazgo transformacional.", time: "Hace 2 horas", unread: true },
-    { id: 2, title: "Actualización de perfil", message: "Tu perfil de empresa ha sido verificado exitosamente.", time: "Hace 5 horas", unread: true },
-    { id: 3, title: "Próximo evento", message: "Recuerda que el EMV 2025 comienza en 30 días.", time: "Hace 1 día", unread: false },
-  ];
+function NotificationsModal({ onClose, email }: { onClose: () => void; email?: string }) {
+  const [notifications, setNotifications] = useState<{ id: string; title: string; message: string; time: string; unread: boolean }[]>([]);
+
+  useEffect(() => {
+    if (!email) return;
+    getUserNotifications(email).then((res) => {
+      if (!res.success || !res.data) return;
+      const now = Date.now();
+      setNotifications(
+        res.data.map((n) => {
+          const mins = Math.floor((now - new Date(n.createdAt).getTime()) / 60000);
+          const time = mins < 1 ? "Ahora" : mins < 60 ? `Hace ${mins} min` : mins < 1440 ? `Hace ${Math.floor(mins / 60)} h` : `Hace ${Math.floor(mins / 1440)} días`;
+          return { id: n.id, title: n.title, message: n.message, time, unread: !n.isRead };
+        })
+      );
+    });
+  }, [email]);
 
   return (
     <div
@@ -608,6 +619,11 @@ function NotificationsModal({ onClose }: { onClose: () => void }) {
           </button>
         </div>
         <div style={{ maxHeight: 400, overflowY: "auto" }}>
+          {notifications.length === 0 && (
+            <div style={{ padding: "32px 24px", textAlign: "center", fontSize: 13, color: "#9CA3AF", fontFamily: "var(--font-sans)" }}>
+              No tienes notificaciones.
+            </div>
+          )}
           {notifications.map((notif) => (
             <div
               key={notif.id}
@@ -842,7 +858,7 @@ export function Dashboard({ onLogout, onNavigate, userTier = "Constructor", onUp
         <ContentModal item={contentModalItem} onClose={handleCloseContentModal} userTier={userTier} />
       )}
       {notificationsModalOpen && (
-        <NotificationsModal onClose={handleCloseNotificationsModal} />
+        <NotificationsModal onClose={handleCloseNotificationsModal} email={email} />
       )}
     </div>
     </DashboardDataContext.Provider>

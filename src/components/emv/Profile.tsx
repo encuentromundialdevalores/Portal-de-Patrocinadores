@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   User, Mail, Phone, Globe, Building2, MapPin, Briefcase,
   Save, Edit2, Camera, Shield, Bell, Lock, Check,
@@ -7,6 +7,16 @@ import {
   BookOpen, Video, FileText, TrendingUp, Star, CheckCircle,
 } from "lucide-react";
 import { Sidebar, Page } from "./Sidebar";
+import { getProfileData } from "@/app/actions";
+
+// Mapea el tipo de contenido a un icono/color para el feed de actividad.
+const ACTIVITY_ICON: Record<string, { icon: React.ElementType; color: string }> = {
+  VIDEO: { icon: Video, color: "#29ABE2" },
+  PDF: { icon: FileText, color: "#F7941D" },
+  REPORT: { icon: FileText, color: "#F7941D" },
+  CURSO: { icon: BookOpen, color: "#10B981" },
+};
+const activityVisual = (type: string) => ACTIVITY_ICON[type?.toUpperCase()] ?? { icon: BookOpen, color: "#29ABE2" };
 
 const EMV_BLUE    = "#29ABE2";
 const EMV_ORANGE  = "#F7941D";
@@ -47,23 +57,6 @@ const INITIAL: UserProfile = {
   tier:        "Constructor",
   memberSince: "Febrero 2024",
 };
-
-const ACTIVITY = [
-  { icon: Video,    label: "Liderazgo con Propósito",          type: "Webinar visto",        date: "Hace 2 días",   color: EMV_BLUE   },
-  { icon: BookOpen, label: "Certificación en Valores — Mód. 2",type: "Curso completado",     date: "Hace 5 días",   color: GREEN      },
-  { icon: FileText, label: "Reporte Q2 2025",                  type: "Reporte descargado",   date: "Hace 1 semana", color: EMV_ORANGE },
-  { icon: Video,    label: "Ética Empresarial para Líderes",   type: "Video visto",          date: "Hace 2 semanas",color: EMV_MAGENTA},
-  { icon: BookOpen, label: "Comunicación Basada en Valores",   type: "Curso en progreso",    date: "Hace 3 semanas",color: EMV_BLUE   },
-];
-
-const ACHIEVEMENTS = [
-  { emoji: "🏆", label: "Primer Webinar",        desc: "Completaste tu primer webinar EMV",       achieved: true  },
-  { emoji: "📚", label: "Lector Activo",          desc: "Descargaste 5+ reportes de impacto",      achieved: true  },
-  { emoji: "🎓", label: "Certificado EMV",        desc: "Completaste el módulo de certificación",   achieved: true  },
-  { emoji: "🌟", label: "Aliado Destacado",       desc: "12 meses consecutivos como patrocinador",  achieved: true  },
-  { emoji: "🛡", label: "Nivel Guardián",         desc: "Alcanza el nivel máximo de membresía",     achieved: false },
-  { emoji: "🤝", label: "Embajador de Valores",   desc: "Invita a 3 empresas a la comunidad EMV",   achieved: false },
-];
 
 // ── Sub-components ────────────────────────────────────────────────────────────
 
@@ -181,13 +174,34 @@ interface Props {
   onNavigate: (p: Page) => void;
   onLogout: () => void;
   userTier?: string;
+  email?: string;
 }
 
-export function Profile({ onNavigate, onLogout, userTier = "Constructor" }: Props) {
+export function Profile({ onNavigate, onLogout, userTier = "Constructor", email }: Props) {
   const [profile, setProfile] = useState<UserProfile>(INITIAL);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft]     = useState<UserProfile>(INITIAL);
   const [saved, setSaved]     = useState(false);
+  const [activity, setActivity] = useState<{ id: string; label: string; type: string; date: string }[]>([]);
+  const [achievements, setAchievements] = useState<{ id: string; emoji: string; label: string; desc: string; achieved: boolean }[]>([]);
+
+  useEffect(() => {
+    if (!email) return;
+    getProfileData(email).then((res) => {
+      if (!res.success || !res.data) return;
+      const u = res.data.user;
+      setActivity(res.data.activity);
+      setAchievements(res.data.achievements);
+      setProfile((prev) => ({
+        ...prev,
+        name: u.name || prev.name,
+        email: u.email || prev.email,
+        company: u.companyName || u.organization?.name || prev.company,
+        phone: u.phone || prev.phone,
+        memberSince: new Date(u.createdAt).toLocaleDateString("es-MX", { month: "long", year: "numeric" }),
+      }));
+    });
+  }, [email]);
 
   const [notifEmail,  setNotifEmail]  = useState(true);
   const [notifWebinar,setNotifWebinar]= useState(true);
@@ -367,11 +381,14 @@ export function Profile({ onNavigate, onLogout, userTier = "Constructor" }: Prop
             }}>
               <div style={{ padding: "16px 20px 12px", borderBottom: "1px solid rgba(0,0,0,0.06)" }}>
                 <h3 style={{ fontSize: 14, fontWeight: 700, color: "#1F2937", margin: 0, fontFamily: "var(--font-display)" }}>Logros</h3>
-                <p style={{ fontSize: 11, color: "#9CA3AF", margin: "2px 0 0", fontFamily: "var(--font-sans)" }}>4 de 6 desbloqueados</p>
+                <p style={{ fontSize: 11, color: "#9CA3AF", margin: "2px 0 0", fontFamily: "var(--font-sans)" }}>{achievements.filter(a => a.achieved).length} de {achievements.length} desbloqueados</p>
               </div>
               <div style={{ padding: "14px 20px", display: "flex", flexDirection: "column", gap: 10 }}>
-                {ACHIEVEMENTS.map(a => (
-                  <div key={a.label} style={{
+                {achievements.length === 0 && (
+                  <div style={{ fontSize: 12, color: "#9CA3AF", fontFamily: "var(--font-sans)", textAlign: "center", padding: "8px 0" }}>Sin logros aún</div>
+                )}
+                {achievements.map(a => (
+                  <div key={a.id} style={{
                     display: "flex", alignItems: "center", gap: 10,
                     opacity: a.achieved ? 1 : 0.45,
                   }}>
@@ -469,28 +486,36 @@ export function Profile({ onNavigate, onLogout, userTier = "Constructor" }: Prop
             {/* Activity log */}
             <Section title="Actividad Reciente">
               <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                {ACTIVITY.map((a, i) => (
-                  <div key={i} style={{
-                    display: "flex", alignItems: "center", gap: 12,
-                    padding: "11px 0",
-                    borderBottom: i < ACTIVITY.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none",
-                  }}>
-                    <div style={{
-                      width: 34, height: 34, borderRadius: 9, flexShrink: 0,
-                      background: `${a.color}12`, border: `1px solid ${a.color}22`,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                    }}>
-                      <a.icon size={15} color={a.color} />
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", fontFamily: "var(--font-sans)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                        {a.label}
-                      </div>
-                      <div style={{ fontSize: 11, color: "#9CA3AF", fontFamily: "var(--font-sans)" }}>{a.type}</div>
-                    </div>
-                    <div style={{ fontSize: 11, color: "#C4C9D4", fontFamily: "var(--font-sans)", flexShrink: 0 }}>{a.date}</div>
+                {activity.length === 0 && (
+                  <div style={{ fontSize: 12, color: "#9CA3AF", fontFamily: "var(--font-sans)", textAlign: "center", padding: "16px 0" }}>
+                    Aún no hay actividad registrada.
                   </div>
-                ))}
+                )}
+                {activity.map((a, i) => {
+                  const v = activityVisual(a.type);
+                  return (
+                    <div key={a.id} style={{
+                      display: "flex", alignItems: "center", gap: 12,
+                      padding: "11px 0",
+                      borderBottom: i < activity.length - 1 ? "1px solid rgba(0,0,0,0.05)" : "none",
+                    }}>
+                      <div style={{
+                        width: 34, height: 34, borderRadius: 9, flexShrink: 0,
+                        background: `${v.color}12`, border: `1px solid ${v.color}22`,
+                        display: "flex", alignItems: "center", justifyContent: "center",
+                      }}>
+                        <v.icon size={15} color={v.color} />
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", fontFamily: "var(--font-sans)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {a.label}
+                        </div>
+                        <div style={{ fontSize: 11, color: "#9CA3AF", fontFamily: "var(--font-sans)" }}>{a.type}</div>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#C4C9D4", fontFamily: "var(--font-sans)", flexShrink: 0 }}>{a.date}</div>
+                    </div>
+                  );
+                })}
               </div>
             </Section>
 

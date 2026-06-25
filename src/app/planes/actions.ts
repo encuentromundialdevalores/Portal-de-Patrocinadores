@@ -2,6 +2,7 @@
 
 import { auth } from "@/auth";
 import { stripe } from "@/lib/stripe";
+import { getPlan, getChargeAmount } from "@/lib/plans";
 import { headers } from "next/headers";
 
 export async function createCheckoutSessionAction(planData: {
@@ -15,22 +16,28 @@ export async function createCheckoutSessionAction(planData: {
     throw new Error("No estás autenticado");
   }
 
+  // El precio se calcula en el servidor desde el catálogo, NO se confía en
+  // el `price` enviado por el cliente (evita manipulación del monto).
+  const plan = getPlan(planData.key);
+  if (!plan) {
+    throw new Error("Plan no válido");
+  }
+
   // Obtenemos el origen (ej: http://localhost:3000)
   const headersList = await headers();
   const host = headersList.get("host") || "localhost:3000";
   const protocol = headersList.get("x-forwarded-proto") || "http";
   const origin = `${protocol}://${host}`;
 
-  // `planData.price` es el precio MENSUAL mostrado en la UI.
-  // - Mensual: se cobra ese monto cada mes.
+  // - Mensual: se cobra el precio mensual cada mes.
   // - Anual: se cobra el equivalente a 12 meses, una vez al año.
   const interval = planData.annual ? "year" : "month";
-  const unitAmount = (planData.annual ? planData.price * 12 : planData.price) * 100; // Stripe usa centavos
+  const unitAmount = getChargeAmount(plan.key, planData.annual) * 100; // Stripe usa centavos
 
   const metadata = {
     userId: session.user.id || "",
     userEmail: session.user.email,
-    planKey: planData.key,
+    planKey: plan.key,
     billingInterval: interval,
   };
 
@@ -47,7 +54,7 @@ export async function createCheckoutSessionAction(planData: {
           price_data: {
             currency: "mxn",
             product_data: {
-              name: `Membresía ${planData.name} - EMV`,
+              name: `Membresía ${plan.name} - EMV`,
             },
             unit_amount: unitAmount,
             recurring: { interval },

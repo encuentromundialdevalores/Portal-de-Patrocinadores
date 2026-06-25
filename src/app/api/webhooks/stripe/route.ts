@@ -2,11 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import Stripe from "stripe";
 import { stripe } from "@/lib/stripe";
 import { prisma } from "@/lib/prisma";
+import { toMembershipLevel } from "@/lib/plans";
 import type { MembershipLevel } from "@prisma/client";
 
-// Mapea el `planKey` de la app al enum de membresía de Prisma.
-function toMembershipLevel(planKey: string): MembershipLevel {
-  return planKey.toUpperCase() as MembershipLevel;
+// Extrae monto/moneda/intervalo del primer item de la suscripción de Stripe.
+function getPricing(subscription: Stripe.Subscription): {
+  amount: number | null;
+  currency: string | null;
+  interval: string | null;
+} {
+  const price = subscription.items.data[0]?.price;
+  return {
+    amount: price?.unit_amount ?? null,
+    currency: price?.currency ?? null,
+    interval: price?.recurring?.interval ?? null,
+  };
 }
 
 // `current_period_end` cambió de ubicación entre versiones de la API de Stripe
@@ -59,33 +69,33 @@ async function upsertSubscription(params: {
   stripeSubscriptionId: string;
   planName: string;
   status: string;
+  amount: number | null;
+  currency: string | null;
+  interval: string | null;
   currentPeriodEnd: Date | null;
 }) {
-  const existing = await prisma.subscription.findFirst({
+  await prisma.subscription.upsert({
     where: { stripeSubscriptionId: params.stripeSubscriptionId },
+    update: {
+      status: params.status,
+      amount: params.amount,
+      currency: params.currency,
+      interval: params.interval,
+      currentPeriodEnd: params.currentPeriodEnd,
+      stripeCustomerId: params.stripeCustomerId,
+    },
+    create: {
+      organizationId: params.organizationId,
+      stripeCustomerId: params.stripeCustomerId,
+      stripeSubscriptionId: params.stripeSubscriptionId,
+      planName: params.planName,
+      status: params.status,
+      amount: params.amount,
+      currency: params.currency,
+      interval: params.interval,
+      currentPeriodEnd: params.currentPeriodEnd,
+    },
   });
-
-  if (existing) {
-    await prisma.subscription.update({
-      where: { id: existing.id },
-      data: {
-        status: params.status,
-        currentPeriodEnd: params.currentPeriodEnd,
-        stripeCustomerId: params.stripeCustomerId,
-      },
-    });
-  } else {
-    await prisma.subscription.create({
-      data: {
-        organizationId: params.organizationId,
-        stripeCustomerId: params.stripeCustomerId,
-        stripeSubscriptionId: params.stripeSubscriptionId,
-        planName: params.planName,
-        status: params.status,
-        currentPeriodEnd: params.currentPeriodEnd,
-      },
-    });
-  }
 }
 
 export async function POST(req: NextRequest) {
@@ -140,6 +150,7 @@ export async function POST(req: NextRequest) {
         }
 
         const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+        const pricing = getPricing(subscription);
 
         const orgId = await prisma.$transaction((tx) =>
           applyMembership(tx, userEmail, toMembershipLevel(planKey))
@@ -151,6 +162,9 @@ export async function POST(req: NextRequest) {
           stripeSubscriptionId: subscriptionId,
           planName: planKey,
           status: subscription.status,
+          amount: pricing.amount,
+          currency: pricing.currency,
+          interval: pricing.interval,
           currentPeriodEnd: getCurrentPeriodEnd(subscription),
         });
 
@@ -161,18 +175,17 @@ export async function POST(req: NextRequest) {
       // Renovaciones, cambios de estado (past_due, etc.).
       case "customer.subscription.updated": {
         const subscription = event.data.object as Stripe.Subscription;
-        const existing = await prisma.subscription.findFirst({
+        const pricing = getPricing(subscription);
+        await prisma.subscription.updateMany({
           where: { stripeSubscriptionId: subscription.id },
+          data: {
+            status: subscription.status,
+            amount: pricing.amount,
+            currency: pricing.currency,
+            interval: pricing.interval,
+            currentPeriodEnd: getCurrentPeriodEnd(subscription),
+          },
         });
-        if (existing) {
-          await prisma.subscription.update({
-            where: { id: existing.id },
-            data: {
-              status: subscription.status,
-              currentPeriodEnd: getCurrentPeriodEnd(subscription),
-            },
-          });
-        }
         break;
       }
 

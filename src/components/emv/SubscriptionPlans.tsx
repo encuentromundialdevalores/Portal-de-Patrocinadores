@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { signIn } from "next-auth/react";
 import { Check, Zap, Star, Shield, Users, ArrowRight, ArrowLeft } from "lucide-react";
 import { motion } from "motion/react";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
@@ -18,8 +19,8 @@ const plans = [
     icon: Users,
     color: EMV_BLUE,
     colorLight: "#E8F6FC",
-    monthlyPrice: 1000,
-    annualPrice: 800,
+    monthlyPrice: PLANS.aliado.monthlyPrice,
+    annualPrice: PLANS.aliado.annualPrice,
     description: "Se suma a la causa y comienza a generar impacto.",
     badge: null,
     features: [
@@ -42,8 +43,8 @@ const plans = [
     icon: Zap,
     color: EMV_ORANGE,
     colorLight: "#FEF3E7",
-    monthlyPrice: 3000,
-    annualPrice: 2400,
+    monthlyPrice: PLANS.sembrador.monthlyPrice,
+    annualPrice: PLANS.sembrador.annualPrice,
     description: "Siembra valores en tu organización y comunidad.",
     badge: null,
     features: [
@@ -65,8 +66,8 @@ const plans = [
     icon: Star,
     color: "#6366F1",
     colorLight: "#EEF2FF",
-    monthlyPrice: 5000,
-    annualPrice: 4000,
+    monthlyPrice: PLANS.constructor.monthlyPrice,
+    annualPrice: PLANS.constructor.annualPrice,
     description: "Construye comunidad con impacto comprobado.",
     badge: "Más popular",
     features: [
@@ -88,8 +89,8 @@ const plans = [
     icon: Shield,
     color: EMV_MAGENTA,
     colorLight: "#FDE8F4",
-    monthlyPrice: 10000,
-    annualPrice: 8000,
+    monthlyPrice: PLANS.guardian.monthlyPrice,
+    annualPrice: PLANS.guardian.annualPrice,
     description: "Protege el legado y lidera el cambio con propósito.",
     badge: "Elite",
     features: [
@@ -116,6 +117,7 @@ const allFeatures = [
 ];
 
 import { createCheckoutSessionAction } from "@/app/planes/actions";
+import { PLANS } from "@/lib/plans";
 
 interface SubscriptionPlansProps {
   userName?: string;
@@ -136,6 +138,10 @@ export function SubscriptionPlans({ userName, onSelectPlan, onBack }: Subscripti
         window.location.href = result.url;
       }
     } catch (error: any) {
+      if (error.message === "No estás autenticado") {
+        signIn("google", { callbackUrl: "/planes" });
+        return;
+      }
       alert(error.message);
       setIsLoading(null);
     }

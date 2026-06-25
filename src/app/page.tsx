@@ -19,11 +19,13 @@ export default async function Home() {
 
   if (session?.user?.email) {
     const dbUser = await prisma.user.findUnique({ where: { email: session.user.email } });
-    
-    if (!dbUser?.membership) {
+
+    // Sin membresía real (NONE o usuario nuevo) → elegir un plan.
+    // Con membresía activa → directo a su portal.
+    if (!dbUser || dbUser.membership === "NONE") {
       redirect("/planes");
     }
-    
+
     initialView = "portal";
     initialTier = TIER_MAP[dbUser.membership.toLowerCase()] || dbUser.membership;
   }

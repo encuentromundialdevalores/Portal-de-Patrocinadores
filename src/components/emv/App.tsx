@@ -322,15 +322,13 @@ function RegisterPanel({ onRegisterComplete }: { onRegisterComplete: (name: stri
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      onRegisterComplete(name, email);
-    }, 1000);
+    // El único provider real es Google; el formulario de email es un paso previo.
+    signIn("google", { callbackUrl: "/" });
   };
 
   const handleGoogle = () => {
     setIsLoading(true);
-    signIn("google", { callbackUrl: "/planes" });
+    signIn("google", { callbackUrl: "/" });
   };
 
   return (
@@ -479,7 +477,7 @@ function AuthPanel({ onLogin, onAdminLogin, onRegisterComplete }: {
 
   const handleGoogleLogin = () => {
     setIsLoading(true);
-    signIn("google", { callbackUrl: "/planes" });
+    signIn("google", { callbackUrl: "/" });
   };
 
   return (
@@ -770,7 +768,7 @@ export default function App({ initialView = "auth", initialTier = "Constructor",
       ) : page === "membership" ? (
         <Membership onNavigate={(p: any) => setPage(p)} onLogout={handleLogout} userTier={userTier} onUpgrade={() => setView("plans")} />
       ) : page === "profile" ? (
-        <Profile onNavigate={(p: any) => setPage(p)} onLogout={handleLogout} userTier={userTier} />
+        <Profile onNavigate={(p: any) => setPage(p)} onLogout={handleLogout} userTier={userTier} email={email} />
       ) : (
         <Dashboard onLogout={handleLogout} onNavigate={(p: any) => setPage(p)} userTier={userTier} onUpgrade={() => setView("plans")} email={email} />
       )}

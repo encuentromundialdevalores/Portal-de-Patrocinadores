@@ -374,7 +374,7 @@ function ContentCard({ item, onClick, onAction }: { item: ContentItem; onClick?:
 // ── Countdown data & component ────────────────────────────────────────────────
 
 interface UpcomingVideo {
-  id: number;
+  id: string | number;
   title: string;
   description: string;
   type: Exclude<Category, "Todos">;
@@ -384,54 +384,6 @@ interface UpcomingVideo {
   duration: string;
   speaker: string;
 }
-
-// Dates set to future months of 2026 (today = June 2026)
-const UPCOMING_VIDEOS: UpcomingVideo[] = [
-  {
-    id: 101,
-    title: "Masterclass: Comunicación Basada en Valores",
-    description: "Aprende a comunicar la propuesta de valor de tu empresa de forma auténtica y que inspire a tus colaboradores.",
-    type: "Videos",
-    tier: "Constructor",
-    unlockDate: new Date("2026-07-01T10:00:00"),
-    thumb: "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=500&h=280&fit=crop&auto=format",
-    duration: "1h 10min",
-    speaker: "Dr. Carlos Mendoza",
-  },
-  {
-    id: 102,
-    title: "Workshop: Cultura Organizacional 2026",
-    description: "Taller práctico para líderes sobre cómo diseñar programas de cultura que generen impacto real y duradero.",
-    type: "Webinars",
-    tier: "Aliado",
-    unlockDate: new Date("2026-08-01T09:00:00"),
-    thumb: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=500&h=280&fit=crop&auto=format",
-    duration: "2h 30min",
-    speaker: "Lic. Ana Reyes",
-  },
-  {
-    id: 103,
-    title: "Certificación en Liderazgo Ético — Módulo 3",
-    description: "Tercera sesión del programa de certificación oficial EMV para directivos comprometidos con el liderazgo con valores.",
-    type: "Cursos",
-    tier: "Sembrador",
-    unlockDate: new Date("2026-09-01T11:00:00"),
-    thumb: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=500&h=280&fit=crop&auto=format",
-    duration: "3h 45min",
-    speaker: "Mtra. Laura Vidal",
-  },
-  {
-    id: 104,
-    title: "Reporte de Impacto Q3 2026 — Comunidad EMV",
-    description: "Análisis completo del tercer trimestre: personas impactadas, programas completados y métricas de transformación.",
-    type: "Reportes",
-    tier: "Constructor",
-    unlockDate: new Date("2026-10-01T08:00:00"),
-    thumb: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=500&h=280&fit=crop&auto=format",
-    duration: "PDF · 44 págs.",
-    speaker: "Equipo EMV",
-  },
-];
 
 function CountdownCard({ video, onNotify, onClick }: { video: UpcomingVideo; onNotify?: () => void; onClick?: () => void }) {
   const [timeLeft, setTimeLeft] = useState<{ d: number; h: number; m: number; s: number } | null>(null);
@@ -569,7 +521,7 @@ function CountdownCard({ video, onNotify, onClick }: { video: UpcomingVideo; onN
   );
 }
 
-function UpcomingSection({ onNotify }: { onNotify: () => void }) {
+function UpcomingSection({ onNotify, videos }: { onNotify: () => void; videos: UpcomingVideo[] }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
@@ -588,15 +540,21 @@ function UpcomingSection({ onNotify }: { onNotify: () => void }) {
           </p>
         </div>
       </div>
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
-        gap: 20,
-      }}>
-        {UPCOMING_VIDEOS.map(video => (
-          <CountdownCard key={video.id} video={video} onNotify={onNotify} />
-        ))}
-      </div>
+      {videos.length === 0 ? (
+        <div style={{ padding: "32px 0", textAlign: "center", fontSize: 13, color: "#9CA3AF", fontFamily: "var(--font-sans)" }}>
+          No hay contenido programado por ahora.
+        </div>
+      ) : (
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))",
+          gap: 20,
+        }}>
+          {videos.map(video => (
+            <CountdownCard key={video.id} video={video} onNotify={onNotify} />
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -760,35 +718,53 @@ export default function Library({ onNavigate, onLogout, onUpgrade, initialCatego
   const [showNotifyToast, setShowNotifyToast] = useState(false);
 
   const [contentList, setContentList] = useState<ContentItem[]>([]);
+  const [upcoming, setUpcoming]   = useState<UpcomingVideo[]>([]);
   const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
     getContent().then(res => {
       if (res.success && res.data) {
-        const mapped = res.data.map((c: any) => {
-          let tierName: TierName = "Sin Membresía";
-          if (c.requiredMembership === "SEMBRADOR") tierName = "Sembrador";
-          if (c.requiredMembership === "CONSTRUCTOR") tierName = "Constructor";
-          if (c.requiredMembership === "GUARDIAN") tierName = "Guardián";
+        const tierOf = (m: string): TierName =>
+          m === "SEMBRADOR" ? "Sembrador" :
+          m === "CONSTRUCTOR" ? "Constructor" :
+          m === "GUARDIAN" ? "Guardián" :
+          m === "ALIADO" ? "Aliado" : "Sin Membresía";
+        const categoryOf = (t: string): Exclude<Category, "Todos"> =>
+          t === "REPORT" || t === "PDF" ? "Reportes" : "Videos";
 
-          let category: Exclude<Category, "Todos"> = "Videos";
-          if (c.type === "REPORT") category = "Reportes";
-          if (c.type === "PDF") category = "Reportes";
+        // Contenido ya disponible (sin fecha futura de desbloqueo).
+        const now = Date.now();
+        const available = res.data.filter((c: any) => !c.unlockDate || new Date(c.unlockDate).getTime() <= now);
+        const mapped = available.map((c: any) => ({
+          id: c.id,
+          title: c.title,
+          category: categoryOf(c.type),
+          description: c.description || "",
+          tier: tierOf(c.requiredMembership),
+          duration: "N/A",
+          views: 0,
+          date: new Date(c.createdAt).toLocaleDateString(),
+          thumb: c.url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&h=340&fit=crop&auto=format",
+          featured: false,
+        }));
+        setContentList(mapped);
 
-          return {
+        // Contenido programado a futuro → sección "Próximamente".
+        const soon = res.data
+          .filter((c: any) => c.unlockDate && new Date(c.unlockDate).getTime() > now)
+          .sort((a: any, b: any) => new Date(a.unlockDate).getTime() - new Date(b.unlockDate).getTime())
+          .map((c: any): UpcomingVideo => ({
             id: c.id,
             title: c.title,
-            category,
             description: c.description || "",
-            tier: tierName,
-            duration: "N/A", // Needs real data if available
-            views: 0,
-            date: new Date(c.createdAt).toLocaleDateString(),
-            thumb: c.url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&h=340&fit=crop&auto=format",
-            featured: false,
-          };
-        });
-        setContentList(mapped);
+            type: categoryOf(c.type),
+            tier: tierOf(c.requiredMembership),
+            unlockDate: new Date(c.unlockDate),
+            thumb: c.url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=500&h=280&fit=crop&auto=format",
+            duration: "Próximamente",
+            speaker: "Equipo EMV",
+          }));
+        setUpcoming(soon);
       }
       setLoading(false);
     });
@@ -884,7 +860,7 @@ export default function Library({ onNavigate, onLogout, onUpgrade, initialCatego
         </div>
 
         {activeTab === "proximos" ? (
-          <UpcomingSection onNotify={handleNotify} />
+          <UpcomingSection onNotify={handleNotify} videos={upcoming} />
         ) : (
           <>
             {/* Stats row */}

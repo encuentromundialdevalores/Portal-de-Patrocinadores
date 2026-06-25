@@ -69,6 +69,9 @@ model User {
   accounts      Account[]
   sessions      Session[]
   Authenticator Authenticator[]
+  notifications Notification[]
+  comments      Comment[]
+  achievements  UserAchievement[]
 }
 
 model Subscription {
@@ -76,9 +79,12 @@ model Subscription {
   organizationId       String
   organization         Organization @relation(fields: [organizationId], references: [id])
   stripeCustomerId     String?
-  stripeSubscriptionId String?
+  stripeSubscriptionId String?      @unique
   planName             String
   status               String // active, canceled, past_due
+  amount               Int? // monto cobrado, en centavos (desde Stripe)
+  currency             String?      @default("mxn")
+  interval             String? // "month" | "year"
   currentPeriodEnd     DateTime?
   createdAt            DateTime     @default(now())
   updatedAt            DateTime     @updatedAt
@@ -221,4 +227,49 @@ model Authenticator {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([userId, credentialID])
+}
+
+// Notificaciones para el usuario. userId nulo = difusión (todos los aliados).
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String
+  message   String
+  type      String   @default("system") // system, content, event, profile
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+// Comentarios / retroalimentación enviados por la comunidad al admin.
+model Comment {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  message   String
+  status    String   @default("open") // open, replied, resolved
+  createdAt DateTime @default(now())
+}
+
+// Catálogo de logros disponibles.
+model Achievement {
+  id          String            @id @default(uuid())
+  code        String            @unique
+  emoji       String
+  label       String
+  description  String
+  sortOrder   Int               @default(0)
+  users       UserAchievement[]
+}
+
+// Logros desbloqueados por cada usuario.
+model UserAchievement {
+  id            String      @id @default(uuid())
+  userId        String
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievementId String
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  achievedAt    DateTime    @default(now())
+
+  @@unique([userId, achievementId])
 }
