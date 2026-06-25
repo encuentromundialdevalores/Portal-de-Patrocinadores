@@ -11,6 +11,8 @@ import {
   PieChart, Pie, Cell, Legend,
 } from "recharts";
 import { Sidebar, Page } from "./Sidebar";
+import { getContent } from "@/app/actions";
+import { useEffect } from "react";
 
 const EMV_BLUE    = "#29ABE2";
 const EMV_ORANGE  = "#F7941D";
@@ -20,98 +22,13 @@ const USER_LEVEL  = 3; // Constructor
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 
-const quarterlyImpact = [
-  { q: "Q1 2024", personas: 2800, eventos: 18, horas: 64  },
-  { q: "Q2 2024", personas: 3500, eventos: 22, horas: 80  },
-  { q: "Q3 2024", personas: 4100, eventos: 27, horas: 96  },
-  { q: "Q4 2024", personas: 5200, eventos: 31, horas: 108 },
-  { q: "Q1 2025", personas: 5900, eventos: 36, horas: 120 },
-  { q: "Q2 2025", personas: 7300, eventos: 42, horas: 140 },
-];
+const quarterlyImpact: any[] = [];
+const radarData: any[] = [];
+const pieData: any[] = [];
+const companyMonthly: any[] = [];
 
-const radarData = [
-  { metric: "Liderazgo",    score: 88 },
-  { metric: "Innovación",   score: 72 },
-  { metric: "Comunidad",    score: 95 },
-  { metric: "Bienestar",    score: 80 },
-  { metric: "Formación",    score: 84 },
-  { metric: "Valores",      score: 91 },
-];
-
-const pieData = [
-  { name: "Webinars",     value: 34, color: EMV_BLUE    },
-  { name: "Cursos",       value: 28, color: EMV_ORANGE  },
-  { name: "Eventos",      value: 22, color: EMV_MAGENTA },
-  { name: "Certificados", value: 16, color: "#8B5CF6"   },
-];
-
-const companyMonthly = [
-  { mes: "Ene", colaboradores: 42, programas: 3 },
-  { mes: "Feb", colaboradores: 58, programas: 4 },
-  { mes: "Mar", colaboradores: 71, programas: 4 },
-  { mes: "Abr", colaboradores: 83, programas: 5 },
-  { mes: "May", colaboradores: 96, programas: 6 },
-  { mes: "Jun", colaboradores: 112, programas: 7 },
-];
-
-const quarterReports = [
-  {
-    label: "Q1 2025",
-    sub: "Ene – Mar 2025",
-    date: "15 Abr 2025",
-    tier: "Aliado",
-    tierLevel: 1,
-    color: EMV_BLUE,
-    pages: 28,
-    thumb: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=480&h=280&fit=crop&auto=format",
-    highlight: "3,200 personas impactadas",
-  },
-  {
-    label: "Q2 2025",
-    sub: "Abr – Jun 2025",
-    date: "15 Jul 2025",
-    tier: "Aliado",
-    tierLevel: 1,
-    color: EMV_BLUE,
-    pages: 32,
-    thumb: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=480&h=280&fit=crop&auto=format",
-    highlight: "4,800 personas impactadas",
-  },
-  {
-    label: "Q3 2025",
-    sub: "Jul – Sep 2025",
-    date: "15 Oct 2025",
-    tier: "Sembrador",
-    tierLevel: 2,
-    color: "#10B981",
-    pages: 36,
-    thumb: "https://images.unsplash.com/photo-1543286386-713bdd548da4?w=480&h=280&fit=crop&auto=format",
-    highlight: "6,100 personas impactadas",
-  },
-  {
-    label: "Q4 2025",
-    sub: "Oct – Dic 2025",
-    date: "15 Ene 2026",
-    tier: "Constructor",
-    tierLevel: 3,
-    color: EMV_ORANGE,
-    pages: 44,
-    thumb: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=480&h=280&fit=crop&auto=format",
-    highlight: "8,400 personas impactadas",
-  },
-];
-
-const annualReport = {
-  label: "Reporte Anual 2024",
-  sub: "Informe ejecutivo completo",
-  date: "28 Feb 2025",
-  tier: "Constructor",
-  tierLevel: 3,
-  color: EMV_ORANGE,
-  pages: 68,
-  thumb: "https://images.unsplash.com/photo-1599658880436-c61792e70672?w=760&h=340&fit=crop&auto=format",
-  highlight: "50,000+ personas impactadas en el año",
-};
+// Annual report can be the latest report, or a specific type, for now null if not fetched
+const fallbackAnnualReport = null;
 
 const TIER_EMOJI: Record<string, string> = {
   Aliado: "🤝", Sembrador: "🌱", Constructor: "🧱", Guardián: "🛡",
@@ -134,7 +51,7 @@ const ttStyle = {
 
 // ── Report Card ───────────────────────────────────────────────────────────────
 
-function ReportCard({ r }: { r: typeof quarterReports[number] }) {
+function ReportCard({ r }: { r: any }) {
   const locked = r.tierLevel > USER_LEVEL;
   const tc     = TIER_COLOR[r.tier];
 
@@ -271,7 +188,8 @@ function ReportCard({ r }: { r: typeof quarterReports[number] }) {
 
 // ── Section: Report Cards ──────────────────────────────────────────────────────
 
-function ReportCardsSection() {
+function ReportCardsSection({ reportsData, loading }: { reportsData: any[], loading: boolean }) {
+  const annualReport = reportsData.length > 0 ? reportsData[0] : null;
   return (
     <div style={{ marginBottom: 32 }}>
       {/* Annual report — wide card */}
@@ -291,7 +209,7 @@ function ReportCardsSection() {
           }}
         >
           <img
-            src={annualReport.thumb}
+            src={annualReport?.thumb}
             alt="Reporte Anual 2024"
             style={{ width: "100%", height: "100%", objectFit: "cover", filter: "brightness(0.55)" }}
           />
@@ -360,9 +278,15 @@ function ReportCardsSection() {
           Reportes Trimestrales
         </h2>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
-        {quarterReports.map(r => <ReportCard key={r.label} r={r} />)}
-      </div>
+      {loading ? (
+        <div style={{ textAlign: "center", padding: "40px", color: "#6B7280" }}>Cargando reportes...</div>
+      ) : reportsData.length === 0 ? (
+        <div style={{ textAlign: "center", padding: "40px", color: "#6B7280" }}>No hay reportes disponibles.</div>
+      ) : (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16 }}>
+          {reportsData.map(r => <ReportCard key={r.label} r={r} />)}
+        </div>
+      )}
     </div>
   );
 }
@@ -790,6 +714,38 @@ interface Props {
 }
 
 export function Reports({ onNavigate, onLogout, userTier = "Constructor" }: Props) {
+  const [reportsData, setReportsData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getContent().then(res => {
+      if (res.success && res.data) {
+        const filtered = res.data.filter((c: any) => c.type === "REPORT" || c.type === "PDF");
+        const mapped = filtered.map((c: any) => {
+          let tierLevel = 1;
+          let tierName = "Aliado";
+          if (c.requiredMembership === "SEMBRADOR") { tierName = "Sembrador"; tierLevel = 2; }
+          if (c.requiredMembership === "CONSTRUCTOR") { tierName = "Constructor"; tierLevel = 3; }
+          if (c.requiredMembership === "GUARDIAN") { tierName = "Guardián"; tierLevel = 4; }
+
+          return {
+            id: c.id,
+            label: c.title,
+            sub: c.description || "Reporte de Impacto",
+            date: new Date(c.createdAt).toLocaleDateString(),
+            tier: tierName,
+            tierLevel,
+            color: TIER_COLOR[tierName] || EMV_BLUE,
+            pages: 0,
+            thumb: c.url || "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=480&h=280&fit=crop&auto=format",
+            highlight: "",
+          };
+        });
+        setReportsData(mapped);
+      }
+      setLoading(false);
+    });
+  }, []);
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: BG }}>
       <Sidebar currentPage="reports" onNavigate={onNavigate} onLogout={onLogout} userTier={userTier} />
@@ -835,7 +791,7 @@ export function Reports({ onNavigate, onLogout, userTier = "Constructor" }: Prop
         </div>
 
         <ImpactIndicators />
-        <ReportCardsSection />
+        <ReportCardsSection reportsData={reportsData} loading={loading} />
         <CommunityCharts />
         <ConstructorSection />
         <GuardianSection />

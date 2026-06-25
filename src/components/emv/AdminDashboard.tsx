@@ -822,12 +822,14 @@ function ContenidoPage() {
 }
 
 function ReportesPage() {
-  const reportes = CONTENT.filter(c => c.type === "Reporte");
+  const data = useContext(AdminDataContext);
+  const content = data?.recentContent || [];
+  const reportes = content.filter((c: any) => c.type === "Reporte" || c.type === "REPORT");
   return (
     <Card>
       <SectionHeader title="Gestión de Reportes" sub="Sube y administra los reportes de impacto trimestrales y anuales" />
       <div>
-        {reportes.map((c, i) => (
+        {reportes.map((c: any, i: number) => (
           <div key={c.id} style={{ display: "flex", alignItems: "center", gap: 14, padding: "12px 20px", borderBottom: i < reportes.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none" }}>
             <div style={{ width: 36, height: 36, borderRadius: 10, flexShrink: 0, background: `${ORANGE}12`, border: `1px solid ${ORANGE}20`, display: "flex", alignItems: "center", justifyContent: "center" }}>
               <FileText size={16} color={ORANGE} />
@@ -1011,6 +1013,7 @@ export function AdminDashboard({ onBack }: Props) {
           </div>
         </div>
       )}
+    </div>
     </AdminDataContext.Provider>
   );
 }

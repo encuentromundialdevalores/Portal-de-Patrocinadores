@@ -7,6 +7,8 @@ import {
   TrendingUp, Building2, ChevronRight, AlertCircle,
   Eye, Download, Zap, Shield, Save, User,
 } from "lucide-react";
+import { getSponsors } from "@/app/actions";
+import { useEffect } from "react";
 
 const BLUE    = "#29ABE2";
 const ORANGE  = "#F7941D";
@@ -20,7 +22,7 @@ type TierName = "Aliado" | "Sembrador" | "Constructor" | "Guardián";
 type StatusKey = "activo" | "pendiente" | "inactivo" | "suspendido";
 
 interface Sponsor {
-  id: number;
+  id: string;
   company: string;
   initials: string;
   contact: string;
@@ -64,18 +66,7 @@ const TIERS: TierName[] = ["Aliado", "Sembrador", "Constructor", "Guardián"];
 
 // ── Mock data ─────────────────────────────────────────────────────────────────
 
-const MOCK: Sponsor[] = [
-  { id: 1,  company: "Grupo Bimbo",         initials: "GB", contact: "Alejandro García",  contactRole: "Director RSE",      email: "a.garcia@bimbo.com.mx",       phone: "+52 55 1234 5678", website: "bimbo.com.mx",      tier: "Guardián",    status: "activo",     registrationDate: "12 Ene 2024", lastLogin: "Hace 2h",    monthlyRevenue: "$8,500",  collaborators: 248, contentAccessed: 94,  reportsDownloaded: 22, coursesCompleted: 18, city: "Ciudad de México", industry: "Alimentación",   notes: "Renovación anual en enero. Muy comprometidos con los valores del EMV.", color: MAGENTA },
-  { id: 2,  company: "CEMEX",               initials: "CX", contact: "Patricia Morales",  contactRole: "Gerente de Cultura", email: "p.morales@cemex.com",         phone: "+52 81 8888 1234", website: "cemex.com",         tier: "Constructor", status: "activo",     registrationDate: "5 Feb 2024",  lastLogin: "Hace 1d",    monthlyRevenue: "$5,000",  collaborators: 186, contentAccessed: 72,  reportsDownloaded: 14, coursesCompleted: 11, city: "Monterrey",        industry: "Construcción",   notes: "Interesados en ampliar a Guardián en Q4 2025.", color: ORANGE },
-  { id: 3,  company: "Banorte",             initials: "BN", contact: "Carlos Ramírez",    contactRole: "VP Capital Humano",  email: "c.ramirez@banorte.com",       phone: "+52 55 8765 4321", website: "banorte.com",       tier: "Constructor", status: "activo",     registrationDate: "18 Feb 2024", lastLogin: "Hace 3d",    monthlyRevenue: "$5,000",  collaborators: 154, contentAccessed: 61,  reportsDownloaded: 9,  coursesCompleted: 8,  city: "Ciudad de México", industry: "Banca",          notes: "Solicitan webinar personalizado para directivos.", color: ORANGE },
-  { id: 4,  company: "Femsa",              initials: "FM", contact: "Sofía Hernández",   contactRole: "Líder de Bienestar", email: "s.hernandez@femsa.com",       phone: "+52 81 1122 3344", website: "femsa.com",         tier: "Sembrador",   status: "pendiente",  registrationDate: "1 Jun 2025",  lastLogin: "Nunca",      monthlyRevenue: "$3,500",  collaborators: 0,   contentAccessed: 0,   reportsDownloaded: 0,  coursesCompleted: 0,  city: "Monterrey",        industry: "Bebidas",        notes: "Nuevo ingreso. Pendiente firma de contrato y onboarding.", color: GREEN },
-  { id: 5,  company: "Liverpool",          initials: "LV", contact: "Jorge Castillo",    contactRole: "HR Director",        email: "j.castillo@liverpool.com.mx", phone: "+52 55 9988 7766", website: "liverpool.com.mx",  tier: "Aliado",      status: "activo",     registrationDate: "22 Mar 2024", lastLogin: "Hace 5d",    monthlyRevenue: "$2,000",  collaborators: 67,  contentAccessed: 28,  reportsDownloaded: 3,  coursesCompleted: 4,  city: "Ciudad de México", industry: "Retail",         notes: "Pendiente invitación al evento de networking Q3.", color: BLUE },
-  { id: 6,  company: "Televisa",           initials: "TV", contact: "Ana Fuentes",       contactRole: "Coordinadora RSE",   email: "a.fuentes@televisa.com",      phone: "+52 55 5544 3322", website: "televisa.com",      tier: "Guardián",    status: "inactivo",   registrationDate: "10 Abr 2023", lastLogin: "Hace 2 sem", monthlyRevenue: "$8,500",  collaborators: 88,  contentAccessed: 45,  reportsDownloaded: 11, coursesCompleted: 6,  city: "Ciudad de México", industry: "Medios",         notes: "No renovaron en junio. Requiere llamada de reactivación urgente.", color: MAGENTA },
-  { id: 7,  company: "Grupo Alfa",         initials: "GA", contact: "Roberto Salinas",   contactRole: "Director Cultura",   email: "r.salinas@alfa.com.mx",       phone: "+52 81 4433 2211", website: "alfa.com.mx",       tier: "Sembrador",   status: "activo",     registrationDate: "15 May 2024", lastLogin: "Hace 4d",    monthlyRevenue: "$3,500",  collaborators: 112, contentAccessed: 38,  reportsDownloaded: 6,  coursesCompleted: 7,  city: "Monterrey",        industry: "Industrial",     notes: "", color: GREEN },
-  { id: 8,  company: "Axtel",              initials: "AX", contact: "Laura Vega",        contactRole: "Gerente RH",         email: "l.vega@axtel.com.mx",         phone: "+52 81 6655 4433", website: "axtel.com.mx",      tier: "Aliado",      status: "activo",     registrationDate: "3 Jul 2024",  lastLogin: "Hace 1 sem", monthlyRevenue: "$2,000",  collaborators: 45,  contentAccessed: 19,  reportsDownloaded: 2,  coursesCompleted: 3,  city: "Monterrey",        industry: "Telecomunicaciones", notes: "", color: BLUE },
-  { id: 9,  company: "Vitro",              initials: "VT", contact: "Miguel Torres",     contactRole: "Cultura y Valores",  email: "m.torres@vitro.com.mx",       phone: "+52 81 7788 9900", website: "vitro.com",         tier: "Sembrador",   status: "suspendido", registrationDate: "20 Nov 2023", lastLogin: "Hace 1 mes", monthlyRevenue: "$3,500",  collaborators: 34,  contentAccessed: 14,  reportsDownloaded: 3,  coursesCompleted: 2,  city: "Monterrey",        industry: "Vidrio",         notes: "Cuenta suspendida por falta de pago. Contactar a Miguel.", color: GREEN },
-  { id: 10, company: "Soriana",            initials: "SR", contact: "Claudia López",     contactRole: "Dir. Capital Humano",email: "c.lopez@soriana.com",         phone: "+52 81 3322 1100", website: "soriana.com",       tier: "Aliado",      status: "activo",     registrationDate: "8 Sep 2024",  lastLogin: "Hace 3d",    monthlyRevenue: "$2,000",  collaborators: 58,  contentAccessed: 22,  reportsDownloaded: 1,  coursesCompleted: 2,  city: "Monterrey",        industry: "Retail",         notes: "", color: BLUE },
-];
+// Mock data removed. Data is fetched from DB.
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -529,7 +520,7 @@ function DetailPanel({ sponsor, onEdit, onClose, onChangeTier, onToggleStatus }:
           {metricCard("Cursos completados",sponsor.coursesCompleted,  Award,    PURPLE )}
         </div>
       </div>
-
+      
       <div style={{ height: 1, background: "rgba(0,0,0,0.06)", margin: "0 20px 16px" }} />
 
       {/* Access summary */}
@@ -585,7 +576,49 @@ function DetailPanel({ sponsor, onEdit, onClose, onChangeTier, onToggleStatus }:
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export function SponsorManagement() {
-  const [sponsors, setSponsors]   = useState<Sponsor[]>(MOCK);
+  const [sponsors, setSponsors]   = useState<Sponsor[]>([]);
+  const [loading, setLoading]     = useState(true);
+
+  useEffect(() => {
+    getSponsors().then((res) => {
+      if (res.success && res.data) {
+        const mapped = res.data.map((user: any) => {
+          let tierName: TierName = "Aliado";
+          if (user.membership === "SEMBRADOR") tierName = "Sembrador";
+          if (user.membership === "CONSTRUCTOR") tierName = "Constructor";
+          if (user.membership === "GUARDIAN") tierName = "Guardián";
+
+          const company = user.organization?.name || user.companyName || "Desconocido";
+          
+          return {
+            id: user.id,
+            company,
+            initials: company.substring(0, 2).toUpperCase(),
+            contact: user.name || "Sin Nombre",
+            contactRole: "Usuario",
+            email: user.email,
+            phone: user.phone || "-",
+            website: user.organization?.domain || "-",
+            tier: tierName,
+            status: (user.isActive ? "activo" : "inactivo") as StatusKey,
+            registrationDate: new Date(user.createdAt).toLocaleDateString(),
+            lastLogin: "Recientemente",
+            monthlyRevenue: "$0",
+            collaborators: 1,
+            contentAccessed: 0,
+            reportsDownloaded: 0,
+            coursesCompleted: 0,
+            city: "-",
+            industry: "-",
+            notes: "",
+            color: TIER_COLOR[tierName]
+          };
+        });
+        setSponsors(mapped);
+      }
+      setLoading(false);
+    });
+  }, []);
   const [search, setSearch]       = useState("");
   const [tierFilter, setTierFilter] = useState<TierName | "Todos">("Todos");
   const [statusFilter, setStatus] = useState<StatusKey | "Todos">("Todos");
@@ -737,6 +770,9 @@ export function SponsorManagement() {
         </div>
 
         {/* Table */}
+        {loading ? (
+          <div style={{ padding: 40, textAlign: "center", color: "#6B7280" }}>Cargando patrocinadores...</div>
+        ) : (
         <div style={{
           flex: 1, overflowY: "auto",
           background: "white", borderRadius: 16,
@@ -873,6 +909,7 @@ export function SponsorManagement() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
 
       {/* Right: detail panel */}
@@ -903,7 +940,7 @@ export function SponsorManagement() {
               setSponsors(prev => prev.map(s => s.id === selected.id ? { ...s, ...updated } : s));
               setSelected(prev => prev ? { ...prev, ...updated } : null);
             } else {
-              const newS: Sponsor = { ...updated, id: Date.now(), initials: (updated.company ?? "").slice(0, 2).toUpperCase(), color: TIER_COLOR[updated.tier ?? "Aliado"], collaborators: 0, contentAccessed: 0, reportsDownloaded: 0, coursesCompleted: 0, lastLogin: "Nunca", monthlyRevenue: ({ Aliado: "$1,000", Sembrador: "$3,000", Constructor: "$5,000", Guardián: "$10,000" })[updated.tier ?? "Aliado"] };
+              const newS: Sponsor = { ...updated, id: Date.now().toString(), initials: (updated.company ?? "").slice(0, 2).toUpperCase(), color: TIER_COLOR[updated.tier ?? "Aliado"], collaborators: 0, contentAccessed: 0, reportsDownloaded: 0, coursesCompleted: 0, lastLogin: "Nunca", monthlyRevenue: ({ Aliado: "$1,000", Sembrador: "$3,000", Constructor: "$5,000", Guardián: "$10,000" })[updated.tier ?? "Aliado"] };
               setSponsors(prev => [newS, ...prev]);
             }
           }}

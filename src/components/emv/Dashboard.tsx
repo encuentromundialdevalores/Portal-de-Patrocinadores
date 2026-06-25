@@ -428,7 +428,7 @@ const TIER_LEVEL: Record<string, number> = {
 };
 
 // Modal de contenido
-function ContentModal({ item, onClose, userTier }: { item: ContentItem | null; onClose: () => void; userTier: TierKey }) {
+function ContentModal({ item, onClose, userTier }: { item: any | null; onClose: () => void; userTier: TierKey }) {
   if (!item) return null;
   const tierLevel = TIER_LEVEL[item.tier];
   const userLevel = (TIER_META[userTier as TierKey] || TIER_META["Aliado"]).level;

@@ -5,6 +5,7 @@ import {
   Lock, ArrowUpRight, Filter, ChevronDown, Star, Eye, CalendarClock, Sparkles,
 } from "lucide-react";
 import { Sidebar } from "./Sidebar";
+import { getContent } from "@/app/actions";
 
 const EMV_BLUE = "#29ABE2";
 const EMV_ORANGE = "#F7941D";
@@ -38,7 +39,7 @@ const TIER_LEVEL: Record<TierName, number> = {
 };
 
 interface ContentItem {
-  id: number;
+  id: string;
   title: string;
   category: Exclude<Category, "Todos">;
   description: string;
@@ -49,111 +50,6 @@ interface ContentItem {
   thumb: string;
   featured?: boolean;
 }
-
-// ── Content data ──────────────────────────────────────────────────────────────
-
-const CONTENT: ContentItem[] = [
-  {
-    id: 1,
-    title: "Liderazgo con Propósito: Equipos de Alto Valor",
-    category: "Webinars",
-    description: "Descubre cómo construir equipos cohesionados a través de valores compartidos y liderazgo consciente.",
-    tier: "Aliado",
-    duration: "1h 24min",
-    views: 3840,
-    date: "5 Jun 2025",
-    thumb: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&h=340&fit=crop&auto=format",
-    featured: true,
-  },
-  {
-    id: 2,
-    title: "Cultura Organizacional y Valores en 2025",
-    category: "Cursos",
-    description: "Programa completo de 8 módulos para transformar la cultura de tu empresa con valores auténticos.",
-    tier: "Sembrador",
-    duration: "6h 15min",
-    views: 2210,
-    date: "28 May 2025",
-    thumb: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=600&h=340&fit=crop&auto=format",
-  },
-  {
-    id: 3,
-    title: "Reporte de Impacto Social Q2 2025 — Comunidad EMV",
-    category: "Reportes",
-    description: "Análisis detallado del impacto generado por la comunidad en el segundo trimestre del año.",
-    tier: "Constructor",
-    duration: "PDF · 42 págs.",
-    views: 1580,
-    date: "15 May 2025",
-    thumb: "https://images.unsplash.com/photo-1551836022-d5d88e9218df?w=600&h=340&fit=crop&auto=format",
-  },
-  {
-    id: 4,
-    title: "Ética Empresarial: Marco Estratégico para Líderes",
-    category: "Videos",
-    description: "Conferencia magistral sobre ética en la toma de decisiones corporativas en entornos complejos.",
-    tier: "Aliado",
-    duration: "48 min",
-    views: 5200,
-    date: "10 May 2025",
-    thumb: "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?w=600&h=340&fit=crop&auto=format",
-  },
-  {
-    id: 5,
-    title: "Certificado en Gestión de Valores Corporativos",
-    category: "Certificados",
-    description: "Acreditación oficial del EMV para líderes que implementan programas de valores en sus organizaciones.",
-    tier: "Guardián",
-    duration: "Acreditación oficial",
-    views: 890,
-    date: "1 May 2025",
-    thumb: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=600&h=340&fit=crop&auto=format",
-  },
-  {
-    id: 6,
-    title: "Estrategias de Bienestar Organizacional",
-    category: "Webinars",
-    description: "Panel de expertos sobre programas de bienestar que fortalecen la identidad y pertenencia corporativa.",
-    tier: "Sembrador",
-    duration: "55 min",
-    views: 2760,
-    date: "22 Abr 2025",
-    thumb: "https://images.unsplash.com/photo-1582213782179-e0d53f98f2ca?w=600&h=340&fit=crop&auto=format",
-  },
-  {
-    id: 7,
-    title: "Masterclass: Comunicación Basada en Valores",
-    category: "Videos",
-    description: "Aprende a comunicar la propuesta de valor de tu empresa de forma auténtica y convincente.",
-    tier: "Constructor",
-    duration: "1h 10min",
-    views: 3120,
-    date: "14 Abr 2025",
-    thumb: "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=600&h=340&fit=crop&auto=format",
-  },
-  {
-    id: 8,
-    title: "Análisis de Tendencias: Impacto Social Empresarial 2025",
-    category: "Reportes",
-    description: "Informe ejecutivo con datos sobre las tendencias globales en responsabilidad social corporativa.",
-    tier: "Guardián",
-    duration: "PDF · 68 págs.",
-    views: 1940,
-    date: "5 Abr 2025",
-    thumb: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?w=600&h=340&fit=crop&auto=format",
-  },
-  {
-    id: 9,
-    title: "Programa de Mentorship en Liderazgo Ético",
-    category: "Cursos",
-    description: "12 semanas de acompañamiento personalizado con líderes referentes del ecosistema de valores.",
-    tier: "Guardián",
-    duration: "12 semanas",
-    views: 720,
-    date: "28 Mar 2025",
-    thumb: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=600&h=340&fit=crop&auto=format",
-  },
-];
 
 // ── Category icons ─────────────────────────────────────────────────────────────
 
@@ -531,26 +427,6 @@ const UPCOMING_VIDEOS: UpcomingVideo[] = [
   },
 ];
 
-function useCountdown(targetDate: Date) {
-  const calc = () => {
-    const diff = targetDate.getTime() - Date.now();
-    if (diff <= 0) return { days: 0, hours: 0, minutes: 0, seconds: 0, done: true };
-    return {
-      days:    Math.floor(diff / 86400000),
-      hours:   Math.floor((diff % 86400000) / 3600000),
-      minutes: Math.floor((diff % 3600000)  / 60000),
-      seconds: Math.floor((diff % 60000)    / 1000),
-      done:    false,
-    };
-  };
-  const [time, setTime] = useState(calc);
-  useEffect(() => {
-    const id = setInterval(() => setTime(calc()), 1000);
-    return () => clearInterval(id);
-  }, [targetDate]);
-  return time;
-}
-
 function CountdownCard({ video, onNotify, onClick }: { video: UpcomingVideo; onNotify?: () => void; onClick?: () => void }) {
   const [timeLeft, setTimeLeft] = useState<{ d: number; h: number; m: number; s: number } | null>(null);
 
@@ -725,8 +601,8 @@ function ContentModal({ item, onClose, onUpgrade }: { item: ContentItem | null; 
   if (!item) return null;
   const tierLevel = TIER_LEVEL[item.tier];
   const isLocked  = tierLevel > USER_TIER_LEVEL;
-  const CatIcon   = CAT_ICON[item.category];
-  const catColor  = CAT_COLOR[item.category];
+  const CatIcon    = CAT_ICON[item.category];
+  const catColor   = CAT_COLOR[item.category];
 
   return (
     <div
@@ -877,8 +753,43 @@ export default function Library({ onNavigate, onLogout, onUpgrade, initialCatego
   const [modalItem, setModalItem] = useState<ContentItem | null>(null);
   const [showNotifyToast, setShowNotifyToast] = useState(false);
 
+  const [contentList, setContentList] = useState<ContentItem[]>([]);
+  const [loading, setLoading]     = useState(true);
+
+  useEffect(() => {
+    getContent().then(res => {
+      if (res.success && res.data) {
+        const mapped = res.data.map((c: any) => {
+          let tierName: TierName = "Aliado";
+          if (c.requiredMembership === "SEMBRADOR") tierName = "Sembrador";
+          if (c.requiredMembership === "CONSTRUCTOR") tierName = "Constructor";
+          if (c.requiredMembership === "GUARDIAN") tierName = "Guardián";
+
+          let category: Exclude<Category, "Todos"> = "Videos";
+          if (c.type === "REPORT") category = "Reportes";
+          if (c.type === "PDF") category = "Reportes";
+
+          return {
+            id: c.id,
+            title: c.title,
+            category,
+            description: c.description || "",
+            tier: tierName,
+            duration: "N/A", // Needs real data if available
+            views: 0,
+            date: new Date(c.createdAt).toLocaleDateString(),
+            thumb: c.url || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&h=340&fit=crop&auto=format",
+            featured: false,
+          };
+        });
+        setContentList(mapped);
+      }
+      setLoading(false);
+    });
+  }, []);
+
   const filtered = useMemo(() => {
-    let items = CONTENT;
+    let items = contentList;
     if (category !== "Todos") items = items.filter(i => i.category === category);
     if (search.trim()) {
       const q = search.toLowerCase();
@@ -886,7 +797,7 @@ export default function Library({ onNavigate, onLogout, onUpgrade, initialCatego
     }
     if (sort === "Más vistos") items = [...items].sort((a, b) => b.views - a.views);
     return items;
-  }, [category, sort, search]);
+  }, [category, sort, search, contentList]);
 
   const handleNotify = () => {
     setShowNotifyToast(true);
@@ -970,6 +881,18 @@ export default function Library({ onNavigate, onLogout, onUpgrade, initialCatego
           <UpcomingSection onNotify={handleNotify} />
         ) : (
           <>
+            {/* Stats row */}
+            <div style={{ display: "flex", gap: 32, marginBottom: 32 }}>
+              <div>
+                <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 4, fontFamily: "var(--font-sans)" }}>Contenido disponible</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: "#1F2937", fontFamily: "var(--font-display)" }}>{contentList.length}</div>
+              </div>
+              <div>
+                <div style={{ fontSize: 13, color: "#6B7280", marginBottom: 4, fontFamily: "var(--font-sans)" }}>Reportes exclusivos</div>
+                <div style={{ fontSize: 24, fontWeight: 700, color: "#1F2937", fontFamily: "var(--font-display)" }}>{contentList.filter(c => c.category === "Reportes").length}</div>
+              </div>
+            </div>
+
             {/* Filters */}
             <div style={{ display: "flex", gap: 12, marginBottom: 24, flexWrap: "wrap", alignItems: "center" }}>
               {/* Search */}
@@ -1035,7 +958,11 @@ export default function Library({ onNavigate, onLogout, onUpgrade, initialCatego
             </div>
 
             {/* Grid */}
-            {filtered.length === 0 ? (
+            {loading ? (
+              <div style={{ textAlign: "center", padding: "60px 20px", color: "#6B7280", fontFamily: "var(--font-sans)" }}>
+                Cargando contenido...
+              </div>
+            ) : filtered.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px 20px", color: "#9CA3AF", fontFamily: "var(--font-sans)" }}>
                 <Sparkles size={36} color="#E5E7EB" style={{ marginBottom: 12, display: "block", margin: "0 auto 12px" }} />
                 <p style={{ fontSize: 15, fontWeight: 600, color: "#6B7280" }}>Sin resultados</p>
