@@ -16,11 +16,12 @@ const BG = "#F4F6F9";
 
 type Category = "Todos" | "Videos" | "Cursos" | "Webinars" | "Certificados" | "Reportes";
 type SortKey  = "Más recientes" | "Más vistos";
-type TierName = "Aliado" | "Sembrador" | "Constructor" | "Guardián";
+type TierName = "Sin Membresía" | "Aliado" | "Sembrador" | "Constructor" | "Guardián";
 
 const USER_TIER_LEVEL = 3; // Constructor
 
 const TIER_COLORS: Record<TierName, string> = {
+  "Sin Membresía": "#9CA3AF",
   Aliado:      EMV_BLUE,
   Sembrador:   "#10B981",
   Constructor: EMV_ORANGE,
@@ -28,6 +29,7 @@ const TIER_COLORS: Record<TierName, string> = {
 };
 
 const TIER_EMOJI: Record<TierName, string> = {
+  "Sin Membresía": "❌",
   Aliado:      "🤝",
   Sembrador:   "🌱",
   Constructor: "🧱",
@@ -35,7 +37,11 @@ const TIER_EMOJI: Record<TierName, string> = {
 };
 
 const TIER_LEVEL: Record<TierName, number> = {
-  Aliado: 1, Sembrador: 2, Constructor: 3, Guardián: 4,
+  "Sin Membresía": 0,
+  Aliado: 1,
+  Sembrador: 2,
+  Constructor: 3,
+  Guardián: 4,
 };
 
 interface ContentItem {
@@ -372,7 +378,7 @@ interface UpcomingVideo {
   title: string;
   description: string;
   type: Exclude<Category, "Todos">;
-  tier: "Aliado" | "Sembrador" | "Constructor" | "Guardián";
+  tier: "Sin Membresía" | "Aliado" | "Sembrador" | "Constructor" | "Guardián";
   unlockDate: Date;
   thumb: string;
   duration: string;
@@ -760,7 +766,7 @@ export default function Library({ onNavigate, onLogout, onUpgrade, initialCatego
     getContent().then(res => {
       if (res.success && res.data) {
         const mapped = res.data.map((c: any) => {
-          let tierName: TierName = "Aliado";
+          let tierName: TierName = "Sin Membresía";
           if (c.requiredMembership === "SEMBRADOR") tierName = "Sembrador";
           if (c.requiredMembership === "CONSTRUCTOR") tierName = "Constructor";
           if (c.requiredMembership === "GUARDIAN") tierName = "Guardián";

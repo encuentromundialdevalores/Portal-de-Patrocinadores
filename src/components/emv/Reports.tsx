@@ -31,11 +31,11 @@ const companyMonthly: any[] = [];
 const fallbackAnnualReport = null;
 
 const TIER_EMOJI: Record<string, string> = {
-  Aliado: "🤝", Sembrador: "🌱", Constructor: "🧱", Guardián: "🛡",
+  "Sin Membresía": "❌", Aliado: "🤝", Sembrador: "🌱", Constructor: "🧱", Guardián: "🛡",
 };
 
 const TIER_COLOR: Record<string, string> = {
-  Aliado: EMV_BLUE, Sembrador: "#10B981", Constructor: EMV_ORANGE, Guardián: EMV_MAGENTA,
+  "Sin Membresía": "#9CA3AF", Aliado: EMV_BLUE, Sembrador: "#10B981", Constructor: EMV_ORANGE, Guardián: EMV_MAGENTA,
 };
 
 // ── Tooltip style ─────────────────────────────────────────────────────────────
@@ -723,7 +723,7 @@ export function Reports({ onNavigate, onLogout, userTier = "Constructor" }: Prop
         const filtered = res.data.filter((c: any) => c.type === "REPORT" || c.type === "PDF");
         const mapped = filtered.map((c: any) => {
           let tierLevel = 1;
-          let tierName = "Aliado";
+          let tierName = "Sin Membresía";
           if (c.requiredMembership === "SEMBRADOR") { tierName = "Sembrador"; tierLevel = 2; }
           if (c.requiredMembership === "CONSTRUCTOR") { tierName = "Constructor"; tierLevel = 3; }
           if (c.requiredMembership === "GUARDIAN") { tierName = "Guardián"; tierLevel = 4; }

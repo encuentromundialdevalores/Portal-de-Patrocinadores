@@ -1,14 +1,15 @@
 "use server";
 
 import { auth } from "@/auth";
-import Stripe from "stripe";
+import { stripe } from "@/lib/stripe";
 import { headers } from "next/headers";
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "sk_test_dummy", {
-  apiVersion: "2024-04-10" as any, // latest stable version syntax might vary, using type assertion to avoid issues
-});
-
-export async function createCheckoutSessionAction(planData: { key: string; name: string; price: number; annual: boolean }) {
+export async function createCheckoutSessionAction(planData: {
+  key: string;
+  name: string;
+  price: number;
+  annual: boolean;
+}) {
   const session = await auth();
   if (!session?.user?.email) {
     throw new Error("No estás autenticado");
@@ -20,36 +21,48 @@ export async function createCheckoutSessionAction(planData: { key: string; name:
   const protocol = headersList.get("x-forwarded-proto") || "http";
   const origin = `${protocol}://${host}`;
 
+  // `planData.price` es el precio MENSUAL mostrado en la UI.
+  // - Mensual: se cobra ese monto cada mes.
+  // - Anual: se cobra el equivalente a 12 meses, una vez al año.
+  const interval = planData.annual ? "year" : "month";
+  const unitAmount = (planData.annual ? planData.price * 12 : planData.price) * 100; // Stripe usa centavos
+
+  const metadata = {
+    userId: session.user.id || "",
+    userEmail: session.user.email,
+    planKey: planData.key,
+    billingInterval: interval,
+  };
+
   try {
     const checkoutSession = await stripe.checkout.sessions.create({
-      payment_method_types: ["card"],
-      mode: "payment", // "subscription" if recurring
+      mode: "subscription",
       customer_email: session.user.email,
-      metadata: {
-        userId: session.user.id || "",
-        userEmail: session.user.email,
-        planKey: planData.key,
-      },
+      metadata,
+      // Replicamos la metadata en la suscripción para poder identificarla
+      // en eventos de ciclo de vida (renovaciones, cancelaciones, etc.).
+      subscription_data: { metadata },
       line_items: [
         {
           price_data: {
             currency: "mxn",
             product_data: {
               name: `Membresía ${planData.name} - EMV`,
-              description: planData.annual ? "Suscripción anual" : "Suscripción mensual",
             },
-            unit_amount: planData.price * 100, // Stripe usa centavos
+            unit_amount: unitAmount,
+            recurring: { interval },
           },
           quantity: 1,
         },
       ],
-      success_url: `${origin}/`,
+      success_url: `${origin}/?pago=exito`,
       cancel_url: `${origin}/planes`,
     });
 
     return { url: checkoutSession.url };
-  } catch (error: any) {
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : "Error al crear la sesión de pago";
     console.error("Stripe Checkout error:", error);
-    throw new Error(error.message || "Error al crear la sesión de pago");
+    throw new Error(message);
   }
 }

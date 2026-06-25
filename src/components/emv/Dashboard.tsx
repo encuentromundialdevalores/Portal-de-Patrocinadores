@@ -75,7 +75,7 @@ function TopBar({ onShowNotifications }: { onShowNotifications?: () => void }) {
 }
 
 function HeroSection({ userTier }: { userTier: TierKey }) {
-  const meta = TIER_META[userTier as TierKey] || TIER_META["Aliado"];
+  const meta = TIER_META[userTier as TierKey] || TIER_META["Sin Membresía"];
   return (
     <div
       className="relative overflow-hidden rounded-2xl"
@@ -398,15 +398,17 @@ function LatestContent({ onNavigate, onOpenModal }: { onNavigate?: (page: Page) 
 }
 
 const TIER_META = {
+  "Sin Membresía": { level: 0, emoji: "❌", color: "#9CA3AF",   progressPct: 0   },
   Aliado:      { level: 1, emoji: "🤝", color: EMV_BLUE,    progressPct: 25  },
   Sembrador:   { level: 2, emoji: "🌱", color: "#10B981",   progressPct: 50  },
   Constructor: { level: 3, emoji: "🧱", color: EMV_ORANGE,  progressPct: 72  },
   Guardián:    { level: 4, emoji: "🛡", color: EMV_MAGENTA, progressPct: 100 },
 } as const;
 type TierKey = keyof typeof TIER_META;
-const TIER_ORDER: TierKey[] = ["Aliado", "Sembrador", "Constructor", "Guardián"];
+const TIER_ORDER: TierKey[] = ["Sin Membresía", "Aliado", "Sembrador", "Constructor", "Guardián"];
 
 const TIER_COLORS: Record<string, string> = {
+  "Sin Membresía": "#9CA3AF",
   Aliado: EMV_BLUE,
   Sembrador: "#10B981",
   Constructor: EMV_ORANGE,
@@ -414,6 +416,7 @@ const TIER_COLORS: Record<string, string> = {
 };
 
 const TIER_EMOJI: Record<string, string> = {
+  "Sin Membresía": "❌",
   Aliado: "🤝",
   Sembrador: "🌱",
   Constructor: "🧱",
@@ -421,6 +424,7 @@ const TIER_EMOJI: Record<string, string> = {
 };
 
 const TIER_LEVEL: Record<string, number> = {
+  "Sin Membresía": 0,
   Aliado: 1,
   Sembrador: 2,
   Constructor: 3,
@@ -431,7 +435,7 @@ const TIER_LEVEL: Record<string, number> = {
 function ContentModal({ item, onClose, userTier }: { item: any | null; onClose: () => void; userTier: TierKey }) {
   if (!item) return null;
   const tierLevel = TIER_LEVEL[item.tier];
-  const userLevel = (TIER_META[userTier as TierKey] || TIER_META["Aliado"]).level;
+  const userLevel = (TIER_META[userTier as TierKey] || TIER_META["Sin Membresía"]).level;
   const isLocked  = tierLevel > userLevel;
   const color = item.color;
 
@@ -663,7 +667,7 @@ function NotificationsModal({ onClose }: { onClose: () => void }) {
 }
 
 function MembershipJourney({ userTier, onUpgrade }: { userTier: TierKey; onUpgrade?: () => void }) {
-  const meta = TIER_META[userTier as TierKey] || TIER_META["Aliado"];
+  const meta = TIER_META[userTier as TierKey] || TIER_META["Sin Membresía"];
   const currentLevel  = meta.level;
   const currentColor  = meta.color;
   const nextTier      = TIER_ORDER[currentLevel] as TierKey | undefined; // next index

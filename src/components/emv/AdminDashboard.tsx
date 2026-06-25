@@ -346,7 +346,7 @@ function SponsorsTable() {
                     background: `${BLUE}12`, border: `1px solid ${BLUE}22`,
                     color: BLUE, fontSize: 10, fontWeight: 700, fontFamily: "var(--font-display)",
                   }}>
-                    {s.users?.[0]?.membership || "ALIADO"}
+                    {s.users?.[0]?.membership === "NONE" ? "SIN MEMBRESÍA" : s.users?.[0]?.membership || "SIN MEMBRESÍA"}
                   </span>
                 </td>
                 <td style={{ padding: "12px 16px" }}>
@@ -546,7 +546,7 @@ function ChartsSection() {
   const membershipData = data?.membershipCounts?.map((m: any) => ({
     name: m.membership,
     value: m._count.membership,
-    color: m.membership === 'ALIADO' ? BLUE : m.membership === 'SEMBRADOR' ? GREEN : m.membership === 'CONSTRUCTOR' ? ORANGE : MAGENTA
+    color: m.membership === 'ALIADO' ? BLUE : m.membership === 'SEMBRADOR' ? GREEN : m.membership === 'CONSTRUCTOR' ? ORANGE : m.membership === 'GUARDIAN' ? MAGENTA : "#9CA3AF"
   })) || [];
 
   return (

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { redirect } from "next/navigation";
 
 const TIER_MAP: Record<string, string> = {
+  none: "Sin Membresía",
   aliado: "Aliado",
   sembrador: "Sembrador",
   constructor: "Constructor",

@@ -18,7 +18,7 @@ const PURPLE  = "#8B5CF6";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-type TierName = "Aliado" | "Sembrador" | "Constructor" | "Guardián";
+type TierName = "Sin Membresía" | "Aliado" | "Sembrador" | "Constructor" | "Guardián";
 type StatusKey = "activo" | "pendiente" | "inactivo" | "suspendido";
 
 interface Sponsor {
@@ -48,13 +48,13 @@ interface Sponsor {
 // ── Constants ─────────────────────────────────────────────────────────────────
 
 const TIER_COLOR: Record<TierName, string> = {
-  Aliado: BLUE, Sembrador: GREEN, Constructor: ORANGE, Guardián: MAGENTA,
+  "Sin Membresía": "#9CA3AF", Aliado: BLUE, Sembrador: GREEN, Constructor: ORANGE, Guardián: MAGENTA,
 };
 const TIER_EMOJI: Record<TierName, string> = {
-  Aliado: "🤝", Sembrador: "🌱", Constructor: "🧱", Guardián: "🛡",
+  "Sin Membresía": "❌", Aliado: "🤝", Sembrador: "🌱", Constructor: "🧱", Guardián: "🛡",
 };
 const TIER_LEVEL: Record<TierName, number> = {
-  Aliado: 1, Sembrador: 2, Constructor: 3, Guardián: 4,
+  "Sin Membresía": 0, Aliado: 1, Sembrador: 2, Constructor: 3, Guardián: 4,
 };
 const STATUS_CONFIG: Record<StatusKey, { label: string; bg: string; color: string; dot: string }> = {
   activo:     { label: "Activo",     bg: "#ECFDF5", color: "#10B981", dot: "#10B981" },
@@ -62,7 +62,7 @@ const STATUS_CONFIG: Record<StatusKey, { label: string; bg: string; color: strin
   inactivo:   { label: "Inactivo",   bg: "#F9FAFB", color: "#9CA3AF", dot: "#9CA3AF" },
   suspendido: { label: "Suspendido", bg: "#FEF2F2", color: "#EF4444", dot: "#EF4444" },
 };
-const TIERS: TierName[] = ["Aliado", "Sembrador", "Constructor", "Guardián"];
+const TIERS: TierName[] = ["Sin Membresía", "Aliado", "Sembrador", "Constructor", "Guardián"];
 
 // ── Mock data ─────────────────────────────────────────────────────────────────
 
@@ -105,7 +105,7 @@ function SponsorModal({ sponsor, onClose, onSave }: {
   onSave: (s: Sponsor) => void;
 }) {
   const isEdit = !!sponsor;
-  const blank: Partial<Sponsor> = { tier: "Aliado", status: "pendiente", color: BLUE };
+  const blank: Partial<Sponsor> = { tier: "Sin Membresía", status: "pendiente", color: "#9CA3AF" };
   const [form, setForm] = useState<Partial<Sponsor>>(sponsor ?? blank);
 
   const field = (label: string, key: keyof Sponsor, type = "text", placeholder = "") => (
@@ -297,7 +297,7 @@ function ChangeTierModal({ sponsor, onClose, onConfirm }: {
   sponsor: Sponsor; onClose: () => void; onConfirm: (t: TierName) => void;
 }) {
   const [selected, setSelected] = useState<TierName>(sponsor.tier);
-  const PRICES: Record<TierName, string> = { Aliado: "$1,000", Sembrador: "$3,000", Constructor: "$5,000", Guardián: "$10,000" };
+  const PRICES: Record<TierName, string> = { "Sin Membresía": "$0", Aliado: "$1,000", Sembrador: "$3,000", Constructor: "$5,000", Guardián: "$10,000" };
 
   return (
     <div style={{
@@ -583,7 +583,7 @@ export function SponsorManagement() {
     getSponsors().then((res) => {
       if (res.success && res.data) {
         const mapped = res.data.map((user: any) => {
-          let tierName: TierName = "Aliado";
+          let tierName: TierName = "Sin Membresía";
           if (user.membership === "SEMBRADOR") tierName = "Sembrador";
           if (user.membership === "CONSTRUCTOR") tierName = "Constructor";
           if (user.membership === "GUARDIAN") tierName = "Guardián";
@@ -940,7 +940,7 @@ export function SponsorManagement() {
               setSponsors(prev => prev.map(s => s.id === selected.id ? { ...s, ...updated } : s));
               setSelected(prev => prev ? { ...prev, ...updated } : null);
             } else {
-              const newS: Sponsor = { ...updated, id: Date.now().toString(), initials: (updated.company ?? "").slice(0, 2).toUpperCase(), color: TIER_COLOR[updated.tier ?? "Aliado"], collaborators: 0, contentAccessed: 0, reportsDownloaded: 0, coursesCompleted: 0, lastLogin: "Nunca", monthlyRevenue: ({ Aliado: "$1,000", Sembrador: "$3,000", Constructor: "$5,000", Guardián: "$10,000" })[updated.tier ?? "Aliado"] };
+              const newS: Sponsor = { ...updated, id: Date.now().toString(), initials: (updated.company ?? "").slice(0, 2).toUpperCase(), color: TIER_COLOR[updated.tier ?? "Sin Membresía"], collaborators: 0, contentAccessed: 0, reportsDownloaded: 0, coursesCompleted: 0, lastLogin: "Nunca", monthlyRevenue: ({ "Sin Membresía": "$0", Aliado: "$1,000", Sembrador: "$3,000", Constructor: "$5,000", Guardián: "$10,000" })[updated.tier ?? "Sin Membresía"] };
               setSponsors(prev => [newS, ...prev]);
             }
           }}
