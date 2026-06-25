@@ -12,6 +12,8 @@ import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, AreaChart, Area, PieChart, Pie, Cell,
 } from "recharts";
+import { createContext, useContext, useEffect } from "react";
+import { getAdminDashboardData } from "@/app/actions";
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 import { SponsorManagement } from "./SponsorManagement";
 const emvLogo = "/imports/EMV_XVIII-Blanco.png";
@@ -31,86 +33,8 @@ type AdminPage =
   | "reportes" | "metricas" | "notificaciones"
   | "comentarios" | "configuracion";
 
-// ── Data ──────────────────────────────────────────────────────────────────────
-
-const growthData = [
-  { mes: "Ene", aliado: 62, sembrador: 28, constructor: 18, guardian: 8 },
-  { mes: "Feb", aliado: 65, sembrador: 30, constructor: 19, guardian: 8 },
-  { mes: "Mar", aliado: 70, sembrador: 31, constructor: 21, guardian: 9 },
-  { mes: "Abr", aliado: 74, sembrador: 33, constructor: 22, guardian: 10 },
-  { mes: "May", aliado: 78, sembrador: 34, constructor: 24, guardian: 10 },
-  { mes: "Jun", aliado: 80, sembrador: 36, constructor: 26, guardian: 11 },
-  { mes: "Jul", aliado: 83, sembrador: 37, constructor: 27, guardian: 12 },
-  { mes: "Ago", aliado: 85, sembrador: 38, constructor: 28, guardian: 12 },
-];
-
-const revenueData1A = [
-  { mes: "Sep", ingreso: 280000 },
-  { mes: "Oct", ingreso: 295000 },
-  { mes: "Nov", ingreso: 305000 },
-  { mes: "Dic", ingreso: 310000 },
-  { mes: "Ene", ingreso: 312000 },
-  { mes: "Feb", ingreso: 328000 },
-  { mes: "Mar", ingreso: 345000 },
-  { mes: "Abr", ingreso: 361000 },
-  { mes: "May", ingreso: 379000 },
-  { mes: "Jun", ingreso: 395000 },
-  { mes: "Jul", ingreso: 418000 },
-  { mes: "Ago", ingreso: 435000 },
-];
-
-const revenueData1M = [
-  { mes: "1-7 Ago", ingreso: 85000 },
-  { mes: "8-14 Ago", ingreso: 92000 },
-  { mes: "15-21 Ago", ingreso: 81000 },
-  { mes: "22-31 Ago", ingreso: 177000 },
-];
-
-const consumptionData = [
-  { tipo: "Webinars", vistas: 4820, descargas: 1240 },
-  { tipo: "Cursos",   vistas: 3610, descargas: 890  },
-  { tipo: "Reportes", vistas: 2180, descargas: 2180 },
-  { tipo: "Videos",   vistas: 5340, descargas: 620  },
-  { tipo: "Certs",    vistas: 980,  descargas: 760  },
-];
-
-const pieData = [
-  { name: "Aliado",      value: 85, color: BLUE    },
-  { name: "Sembrador",   value: 38, color: GREEN   },
-  { name: "Constructor", value: 27, color: ORANGE  },
-  { name: "Guardián",    value: 12, color: MAGENTA },
-];
-
-const SPONSORS = [
-  { id: 1, name: "Grupo Bimbo",       tier: "Guardián",    emoji: "🛡", color: MAGENTA, revenue: "$8,500",  status: "activo",    date: "12 Jun 2025", avatar: "GB" },
-  { id: 2, name: "CEMEX",             tier: "Constructor", emoji: "🧱", color: ORANGE,  revenue: "$5,000",  status: "activo",    date: "8 Jun 2025",  avatar: "CX" },
-  { id: 3, name: "Banorte",           tier: "Constructor", emoji: "🧱", color: ORANGE,  revenue: "$5,000",  status: "activo",    date: "3 Jun 2025",  avatar: "BN" },
-  { id: 4, name: "Femsa",             tier: "Sembrador",   emoji: "🌱", color: GREEN,   revenue: "$3,500",  status: "pendiente", date: "1 Jun 2025",  avatar: "FM" },
-  { id: 5, name: "Liverpool",         tier: "Aliado",      emoji: "🤝", color: BLUE,    revenue: "$2,000",  status: "activo",    date: "28 May 2025", avatar: "LV" },
-  { id: 6, name: "Televisa",          tier: "Guardián",    emoji: "🛡", color: MAGENTA, revenue: "$8,500",  status: "inactivo",  date: "22 May 2025", avatar: "TV" },
-];
-
-const CONTENT = [
-  { id: 1, title: "Liderazgo con Propósito 2025",         type: "Webinar",  status: "publicado",  views: 3840, date: "5 Jun 2025",  tier: "Aliado"      },
-  { id: 2, title: "Certificado en Valores Corporativos",   type: "Curso",    status: "publicado",  views: 1220, date: "28 May 2025", tier: "Constructor" },
-  { id: 3, title: "Reporte Impacto Q2 2025",               type: "Reporte",  status: "publicado",  views: 892,  date: "15 May 2025", tier: "Constructor" },
-  { id: 4, title: "Masterclass: Comunicación de Valores",  type: "Video",    status: "borrador",   views: 0,    date: "Próx. Jul 10",tier: "Sembrador"   },
-  { id: 5, title: "Workshop: Cultura Organizacional",      type: "Workshop", status: "programado", views: 0,    date: "Próx. Jul 20",tier: "Aliado"      },
-];
-
-const NOTIFICATIONS = [
-  { id: 1, type: "sponsor",  icon: Users,      color: BLUE,    msg: "Nuevo patrocinador: Femsa (Sembrador)",          time: "Hace 12 min",  read: false },
-  { id: 2, type: "content",  icon: BookOpen,   color: GREEN,   msg: "Contenido publicado: Liderazgo con Propósito",   time: "Hace 1h",      read: false },
-  { id: 3, type: "report",   icon: FileText,   color: ORANGE,  msg: "Reporte Q2 descargado 50 veces esta semana",     time: "Hace 2h",      read: true  },
-  { id: 4, type: "alert",    icon: AlertCircle,color: MAGENTA, msg: "Televisa no renovó membresía — vence hoy",       time: "Hace 3h",      read: false },
-  { id: 5, type: "metric",   icon: TrendingUp, color: PURPLE,  msg: "Ingresos mensuales superaron meta del 15%",      time: "Hace 5h",      read: true  },
-];
-
-const UPCOMING = [
-  { title: "Masterclass: Comunicación de Valores", date: "10 Jul 2025", type: "Video",    tier: "Sembrador",   color: ORANGE  },
-  { title: "Workshop: Cultura Organizacional",      date: "20 Jul 2025", type: "Workshop", tier: "Aliado",      color: BLUE    },
-  { title: "Reporte Anual 2025 (Preview)",          date: "1 Ago 2025",  type: "Reporte",  tier: "Constructor", color: ORANGE  },
-];
+// ── Context ───────────────────────────────────────────────────────────────────
+const AdminDataContext = createContext<any>(null);
 
 // ── Tooltip style ─────────────────────────────────────────────────────────────
 
@@ -361,6 +285,9 @@ function SectionHeader({ title, sub, action }: { title: string; sub?: string; ac
 // ── Section: Sponsor table ────────────────────────────────────────────────────
 
 function SponsorsTable() {
+  const data = useContext(AdminDataContext);
+  const sponsors = data?.recentSponsors || [];
+
   return (
     <Card>
       <SectionHeader
@@ -393,18 +320,21 @@ function SponsorsTable() {
             </tr>
           </thead>
           <tbody>
-            {SPONSORS.map((s, i) => (
-              <tr key={s.id} style={{ borderBottom: i < SPONSORS.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none" }}>
+            {sponsors.length === 0 && (
+              <tr><td colSpan={6} style={{ padding: "12px 16px", textAlign: "center", fontSize: 12, color: "#9CA3AF" }}>No hay patrocinadores recientes</td></tr>
+            )}
+            {sponsors.map((s: any, i: number) => (
+              <tr key={s.id} style={{ borderBottom: i < sponsors.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none" }}>
                 <td style={{ padding: "12px 16px" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                     <div style={{
                       width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-                      background: `linear-gradient(135deg,${s.color}30,${s.color}15)`,
-                      border: `1px solid ${s.color}25`,
+                      background: `linear-gradient(135deg,${BLUE}30,${BLUE}15)`,
+                      border: `1px solid ${BLUE}25`,
                       display: "flex", alignItems: "center", justifyContent: "center",
-                      fontSize: 11, fontWeight: 800, color: s.color, fontFamily: "var(--font-display)",
+                      fontSize: 11, fontWeight: 800, color: BLUE, fontFamily: "var(--font-display)",
                     }}>
-                      {s.avatar}
+                      {s.name.substring(0,2).toUpperCase()}
                     </div>
                     <span style={{ fontSize: 13, fontWeight: 600, color: "#1F2937", fontFamily: "var(--font-sans)" }}>{s.name}</span>
                   </div>
@@ -413,19 +343,19 @@ function SponsorsTable() {
                   <span style={{
                     display: "inline-flex", alignItems: "center", gap: 4,
                     padding: "2px 8px", borderRadius: 99,
-                    background: `${s.color}12`, border: `1px solid ${s.color}22`,
-                    color: s.color, fontSize: 10, fontWeight: 700, fontFamily: "var(--font-display)",
+                    background: `${BLUE}12`, border: `1px solid ${BLUE}22`,
+                    color: BLUE, fontSize: 10, fontWeight: 700, fontFamily: "var(--font-display)",
                   }}>
-                    {s.emoji} {s.tier}
+                    {s.users?.[0]?.membership || "ALIADO"}
                   </span>
                 </td>
                 <td style={{ padding: "12px 16px" }}>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", fontFamily: "var(--font-display)" }}>{s.revenue}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: "#1F2937", fontFamily: "var(--font-display)" }}>$0</span>
                   <span style={{ fontSize: 11, color: "#9CA3AF", fontFamily: "var(--font-sans)" }}>/mes</span>
                 </td>
-                <td style={{ padding: "12px 16px" }}><StatusPill status={s.status} /></td>
+                <td style={{ padding: "12px 16px" }}><StatusPill status={s.isActive ? "activo" : "inactivo"} /></td>
                 <td style={{ padding: "12px 16px" }}>
-                  <span style={{ fontSize: 12, color: "#6B7280", fontFamily: "var(--font-sans)" }}>{s.date}</span>
+                  <span style={{ fontSize: 12, color: "#6B7280", fontFamily: "var(--font-sans)" }}>{new Date(s.createdAt).toLocaleDateString()}</span>
                 </td>
                 <td style={{ padding: "12px 16px" }}>
                   <div style={{ display: "flex", gap: 4 }}>
@@ -462,6 +392,9 @@ function SponsorsTable() {
 // ── Section: Content table ────────────────────────────────────────────────────
 
 function ContentTable() {
+  const data = useContext(AdminDataContext);
+  const content = data?.recentContent || [];
+
   return (
     <Card>
       <SectionHeader
@@ -480,11 +413,12 @@ function ContentTable() {
         }
       />
       <div>
-        {CONTENT.map((c, i) => (
+        {content.length === 0 && <div style={{ padding: "12px 20px", fontSize: 12, color: "#9CA3AF", textAlign: "center" }}>No hay contenido disponible</div>}
+        {content.map((c: any, i: number) => (
           <div key={c.id} style={{
             display: "flex", alignItems: "center", gap: 14,
             padding: "12px 20px",
-            borderBottom: i < CONTENT.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none",
+            borderBottom: i < content.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none",
           }}>
             <div style={{
               width: 36, height: 36, borderRadius: 10, flexShrink: 0,
@@ -505,16 +439,11 @@ function ContentTable() {
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
                 <TypeBadge type={c.type} />
                 <span style={{ fontSize: 11, color: "#9CA3AF", fontFamily: "var(--font-sans)" }}>
-                  {c.date}
+                  {new Date(c.createdAt).toLocaleDateString()}
                 </span>
-                {c.views > 0 && (
-                  <span style={{ display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: "#6B7280" }}>
-                    <Eye size={10} /> {c.views.toLocaleString()}
-                  </span>
-                )}
               </div>
             </div>
-            <StatusPill status={c.status} />
+            <StatusPill status={c.isActive ? "publicado" : "borrador"} />
             <button style={{
               width: 28, height: 28, borderRadius: 7,
               border: "1px solid rgba(0,0,0,0.08)", background: "none",
@@ -533,7 +462,9 @@ function ContentTable() {
 // ── Section: Notifications feed ───────────────────────────────────────────────
 
 function NotificationsFeed() {
-  const unread = NOTIFICATIONS.filter(n => !n.read).length;
+  const data = useContext(AdminDataContext);
+  const notifications = data?.notifications || [];
+  const unread = notifications.filter((n: any) => !n.read).length;
   return (
     <Card>
       <SectionHeader
@@ -550,25 +481,26 @@ function NotificationsFeed() {
         }
       />
       <div>
-        {NOTIFICATIONS.map((n, i) => (
+        {notifications.length === 0 && <div style={{ padding: "12px 20px", fontSize: 12, color: "#9CA3AF", textAlign: "center" }}>No hay notificaciones</div>}
+        {notifications.map((n: any, i: number) => (
           <div key={n.id} style={{
             display: "flex", alignItems: "flex-start", gap: 12, padding: "13px 20px",
-            borderBottom: i < NOTIFICATIONS.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none",
-            background: n.read ? "transparent" : `${n.color}04`,
+            borderBottom: i < notifications.length - 1 ? "1px solid rgba(0,0,0,0.04)" : "none",
+            background: n.read ? "transparent" : `${BLUE}04`,
           }}>
             {!n.read && (
               <div style={{
                 width: 7, height: 7, borderRadius: "50%",
-                background: n.color, flexShrink: 0, marginTop: 5,
+                background: BLUE, flexShrink: 0, marginTop: 5,
               }} />
             )}
             {n.read && <div style={{ width: 7, flexShrink: 0 }} />}
             <div style={{
               width: 32, height: 32, borderRadius: 8, flexShrink: 0,
-              background: `${n.color}12`, border: `1px solid ${n.color}20`,
+              background: `${BLUE}12`, border: `1px solid ${BLUE}20`,
               display: "flex", alignItems: "center", justifyContent: "center",
             }}>
-              <n.icon size={15} color={n.color} />
+              <Bell size={15} color={BLUE} />
             </div>
             <div style={{ flex: 1 }}>
               <div style={{ fontSize: 13, color: n.read ? "#6B7280" : "#1F2937", fontFamily: "var(--font-sans)", fontWeight: n.read ? 400 : 600, lineHeight: 1.4 }}>
@@ -599,36 +531,7 @@ function UpcomingReleases() {
     <Card>
       <SectionHeader title="Próximos Lanzamientos" sub="Contenido programado" />
       <div style={{ padding: "6px 12px 12px" }}>
-        {UPCOMING.map((u, i) => (
-          <div key={i} style={{
-            display: "flex", alignItems: "center", gap: 12,
-            padding: "10px 10px", borderRadius: 10,
-            background: i % 2 === 0 ? "transparent" : "#FAFAFA",
-          }}>
-            <div style={{
-              width: 8, height: 8, borderRadius: "50%",
-              background: u.color, flexShrink: 0,
-              boxShadow: `0 0 0 3px ${u.color}20`,
-            }} />
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: "#1F2937", fontFamily: "var(--font-sans)" }}>{u.title}</div>
-              <div style={{ display: "flex", gap: 6, marginTop: 3 }}>
-                <TypeBadge type={u.type} />
-                <span style={{ fontSize: 10, color: "#9CA3AF", fontFamily: "var(--font-sans)", display: "flex", alignItems: "center", gap: 3 }}>
-                  <Calendar size={9} /> {u.date}
-                </span>
-              </div>
-            </div>
-            <button style={{
-              width: 26, height: 26, borderRadius: 7,
-              border: "1px solid rgba(0,0,0,0.08)", background: "none",
-              display: "flex", alignItems: "center", justifyContent: "center",
-              cursor: "pointer", color: "#9CA3AF",
-            }}>
-              <Edit2 size={12} />
-            </button>
-          </div>
-        ))}
+        <div style={{ padding: "12px 20px", fontSize: 12, color: "#9CA3AF", textAlign: "center" }}>No hay contenido programado</div>
       </div>
     </Card>
   );
@@ -637,6 +540,15 @@ function UpcomingReleases() {
 // ── Charts section ────────────────────────────────────────────────────────────
 
 function ChartsSection() {
+  const data = useContext(AdminDataContext);
+  
+  // Transform membership data
+  const membershipData = data?.membershipCounts?.map((m: any) => ({
+    name: m.membership,
+    value: m._count.membership,
+    color: m.membership === 'ALIADO' ? BLUE : m.membership === 'SEMBRADOR' ? GREEN : m.membership === 'CONSTRUCTOR' ? ORANGE : MAGENTA
+  })) || [];
+
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 16, marginBottom: 20 }}>
 
@@ -644,68 +556,45 @@ function ChartsSection() {
       <Card style={{ padding: 0 }}>
         <SectionHeader title="Distribución de Membresías" sub="Por nivel activo" />
         <div style={{ padding: "0 20px 20px" }}>
-          <ResponsiveContainer width="100%" height={160}>
-            <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" innerRadius={46} outerRadius={70}
-                dataKey="value" stroke="none">
-                {pieData.map((e, i) => <Cell key={i} fill={e.color} />)}
-              </Pie>
-              <Tooltip contentStyle={tt} formatter={(v: any) => [`${v} sponsors`, ""]} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-            {pieData.map(e => (
-              <div key={e.name} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <div style={{ width: 8, height: 8, borderRadius: 2, background: e.color, flexShrink: 0 }} />
-                <span style={{ fontSize: 11, color: "#6B7280", fontFamily: "var(--font-sans)" }}>{e.name}</span>
-                <span style={{ fontSize: 11, fontWeight: 700, color: "#374151", marginLeft: "auto", fontFamily: "var(--font-display)" }}>{e.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </Card>
-
-      {/* Sponsor growth — stacked area */}
-      <Card style={{ padding: 0 }}>
-        <SectionHeader title="Crecimiento de Patrocinadores" sub="2025 por nivel" />
-        <div style={{ padding: "0 16px 16px" }}>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={growthData}>
-              <defs>
-                {[["gA", BLUE], ["gS", GREEN], ["gC", ORANGE], ["gG", MAGENTA]].map(([id, color]) => (
-                  <linearGradient key={id} id={id} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%"  stopColor={color} stopOpacity={0.25} />
-                    <stop offset="95%" stopColor={color} stopOpacity={0}   />
-                  </linearGradient>
+          {membershipData.length === 0 ? (
+            <div style={{ height: 160, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, color: "#9CA3AF" }}>Sin datos</div>
+          ) : (
+            <>
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie data={membershipData} cx="50%" cy="50%" innerRadius={46} outerRadius={70}
+                    dataKey="value" stroke="none">
+                    {membershipData.map((e: any, i: number) => <Cell key={i} fill={e.color} />)}
+                  </Pie>
+                  <Tooltip contentStyle={tt} formatter={(v: any) => [`${v} sponsors`, ""]} />
+                </PieChart>
+              </ResponsiveContainer>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+                {membershipData.map((e: any) => (
+                  <div key={e.name} style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <div style={{ width: 8, height: 8, borderRadius: 2, background: e.color, flexShrink: 0 }} />
+                    <span style={{ fontSize: 11, color: "#6B7280", fontFamily: "var(--font-sans)" }}>{e.name}</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#374151", marginLeft: "auto", fontFamily: "var(--font-display)" }}>{e.value}</span>
+                  </div>
                 ))}
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
-              <XAxis dataKey="mes" tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} width={28} />
-              <Tooltip contentStyle={tt} />
-              <Area type="monotone" dataKey="aliado"      stroke={BLUE}    fill="url(#gA)" strokeWidth={1.5} dot={false} name="Aliado"      />
-              <Area type="monotone" dataKey="sembrador"   stroke={GREEN}   fill="url(#gS)" strokeWidth={1.5} dot={false} name="Sembrador"   />
-              <Area type="monotone" dataKey="constructor" stroke={ORANGE}  fill="url(#gC)" strokeWidth={1.5} dot={false} name="Constructor" />
-              <Area type="monotone" dataKey="guardian"    stroke={MAGENTA} fill="url(#gG)" strokeWidth={1.5} dot={false} name="Guardián"    />
-            </AreaChart>
-          </ResponsiveContainer>
+              </div>
+            </>
+          )}
         </div>
       </Card>
 
-      {/* Content consumption */}
+      {/* Placeholder blocks since we do not track time-series yet */}
+      <Card style={{ padding: 0 }}>
+        <SectionHeader title="Crecimiento de Patrocinadores" sub="Este año por nivel" />
+        <div style={{ padding: "0 16px 16px", height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", fontSize: 12 }}>
+          Requiere históricos en BD
+        </div>
+      </Card>
+
       <Card style={{ padding: 0 }}>
         <SectionHeader title="Consumo de Contenido" sub="Vistas y descargas" />
-        <div style={{ padding: "0 16px 16px" }}>
-          <ResponsiveContainer width="100%" height={220}>
-            <BarChart data={consumptionData} barSize={12} barGap={4}>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
-              <XAxis dataKey="tipo" tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: "#9CA3AF" }} axisLine={false} tickLine={false} width={36} />
-              <Tooltip contentStyle={tt} cursor={{ fill: "rgba(0,0,0,0.02)" }} />
-              <Bar dataKey="vistas"     fill={BLUE}   radius={[4, 4, 0, 0]} name="Vistas"     />
-              <Bar dataKey="descargas"  fill={ORANGE}  radius={[4, 4, 0, 0]} name="Descargas"  />
-            </BarChart>
-          </ResponsiveContainer>
+        <div style={{ padding: "0 16px 16px", height: 220, display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", fontSize: 12 }}>
+           Requiere históricos en BD
         </div>
       </Card>
     </div>
@@ -715,76 +604,24 @@ function ChartsSection() {
 // ── Revenue chart ─────────────────────────────────────────────────────────────
 
 function RevenueChart() {
-  const [filter, setFilter] = useState("1M");
-
-  let currentData = revenueData1A;
-  if (filter === "1M") currentData = revenueData1M;
-  else if (filter === "3M") currentData = revenueData1A.slice(-3);
-  else if (filter === "6M") currentData = revenueData1A.slice(-6);
-  else if (filter === "1A") currentData = revenueData1A;
-
-  const totalIngreso = currentData.reduce((acc, curr) => acc + curr.ingreso, 0);
-
-  const getSubtitle = () => {
-    if (filter === "1M") return "MXN · Agosto 2025";
-    if (filter === "3M") return "MXN · Últimos 3 meses";
-    if (filter === "6M") return "MXN · Últimos 6 meses";
-    return "MXN · Últimos 12 meses";
-  };
-
   return (
     <Card style={{ marginBottom: 20 }}>
       <SectionHeader
         title="Ingresos Mensuales"
-        sub="Evolución 2025 (MXN)"
+        sub="Evolución (MXN)"
         action={
           <div style={{ display: "flex", gap: 8 }}>
-            {["1M", "3M", "6M", "1A"].map((r) => (
-              <button key={r} onClick={() => setFilter(r)} style={{
-                padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
-                border: filter === r ? "none" : "1px solid rgba(0,0,0,0.09)",
-                background: filter === r ? BLUE : "none",
-                color: filter === r ? "white" : "#6B7280",
-                cursor: "pointer", fontFamily: "var(--font-sans)",
-              }}>
-                {r}
-              </button>
-            ))}
+            <button style={{
+              padding: "4px 10px", borderRadius: 6, fontSize: 11, fontWeight: 600,
+              background: BLUE, color: "white", cursor: "pointer", fontFamily: "var(--font-sans)", border: "none"
+            }}>
+              1M
+            </button>
           </div>
         }
       />
-      <div style={{ padding: "8px 20px 20px" }}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 16 }}>
-          <span style={{ fontSize: 30, fontWeight: 800, color: "#1F2937", fontFamily: "var(--font-display)" }}>
-            ${totalIngreso.toLocaleString()}
-          </span>
-          <span style={{ fontSize: 13, color: "#9CA3AF", fontFamily: "var(--font-sans)" }}>{getSubtitle()}</span>
-          {filter === "1M" && (
-            <span style={{
-              display: "flex", alignItems: "center", gap: 3,
-              fontSize: 12, fontWeight: 700, color: GREEN,
-              background: "#ECFDF5", padding: "3px 9px", borderRadius: 99,
-            }}>
-              <TrendingUp size={11} /> +4.1% vs Julio
-            </span>
-          )}
-        </div>
-        <ResponsiveContainer width="100%" height={180}>
-          <AreaChart data={currentData}>
-            <defs>
-              <linearGradient id="gRev" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor={BLUE} stopOpacity={0.15} />
-                <stop offset="95%" stopColor={BLUE} stopOpacity={0}   />
-              </linearGradient>
-            </defs>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
-            <XAxis dataKey="mes" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-            <YAxis tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} width={55}
-              tickFormatter={v => `$${(v / 1000).toFixed(0)}k`} />
-            <Tooltip contentStyle={tt} formatter={(v: any) => [`$${v.toLocaleString()} MXN`, "Ingreso"]} />
-            <Area type="monotone" dataKey="ingreso" stroke={BLUE} strokeWidth={2.5} fill="url(#gRev)" dot={false} />
-          </AreaChart>
-        </ResponsiveContainer>
+      <div style={{ padding: "8px 20px 20px", display: "flex", justifyContent: "center", alignItems: "center", height: 180, color: "#9CA3AF", fontSize: 12 }}>
+        Requiere históricos en BD
       </div>
     </Card>
   );
@@ -894,15 +731,12 @@ function PlaceholderPage({ title, icon: Icon, color }: { title: string; icon: Re
 // ── Main dashboard content ───────────────────────────────────────────────��────
 
 function DashboardContent() {
+  const data = useContext(AdminDataContext);
+  
   const kpis = [
-    { label: "Total Patrocinadores", value: "162",        delta: "+12%", positive: true,  icon: Users,        color: BLUE,    bg: `${BLUE}10`,    sub: undefined },
-    { label: "Aliados activos",      value: "85",         delta: "+6%",  positive: true,  icon: Globe,        color: BLUE,    bg: `${BLUE}10`,    sub: "🤝 Aliado" },
-    { label: "Sembradores",          value: "38",         delta: "+9%",  positive: true,  icon: Zap,          color: GREEN,   bg: `${GREEN}10`,   sub: "🌱 Sembrador" },
-    { label: "Constructores",        value: "27",         delta: "+15%", positive: true,  icon: Shield,       color: ORANGE,  bg: `${ORANGE}10`,  sub: "🧱 Constructor" },
-    { label: "Guardianes",           value: "12",         delta: "+20%", positive: true,  icon: Award,        color: MAGENTA, bg: `${MAGENTA}10`, sub: "🛡 Guardián" },
-    { label: "Ingreso mensual",      value: "$435K",      delta: "+4%",  positive: true,  icon: DollarSign,   color: GREEN,   bg: `${GREEN}10`,   sub: "MXN" },
-    { label: "Contenido activo",     value: "94",         delta: "+8%",  positive: true,  icon: BookOpen,     color: PURPLE,  bg: `${PURPLE}10`,  sub: "publicaciones" },
-    { label: "Reportes publicados",  value: "18",         delta: "-2%",  positive: false, icon: FileText,     color: ORANGE,  bg: `${ORANGE}10`,  sub: "este trimestre" },
+    { label: "Total Patrocinadores", value: (data?.totalUsers || 0).toString(),        delta: "0%", positive: true,  icon: Users,        color: BLUE,    bg: `${BLUE}10`,    sub: undefined },
+    { label: "Organizaciones Activas",      value: (data?.activeOrganizations || 0).toString(),         delta: "0%",  positive: true,  icon: Globe,        color: BLUE,    bg: `${BLUE}10`,    sub: undefined },
+    { label: "Contenido activo",     value: (data?.totalContent || 0).toString(),         delta: "0%",  positive: true,  icon: BookOpen,     color: PURPLE,  bg: `${PURPLE}10`,  sub: undefined },
   ];
 
   return (
@@ -1084,8 +918,24 @@ interface Props { onBack: () => void; }
 export function AdminDashboard({ onBack }: Props) {
   const [page, setPage] = useState<AdminPage>("dashboard");
   const [showNewContentModal, setShowNewContentModal] = useState(false);
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getAdminDashboardData().then(res => {
+      if (res.success) {
+        setDashboardData(res.data);
+      }
+      setLoading(false);
+    });
+  }, []);
+
+  if (loading) {
+    return <div style={{ display: "flex", minHeight: "100vh", background: BG, alignItems: "center", justifyContent: "center", color: "#6B7280" }}>Cargando datos...</div>;
+  }
 
   return (
+    <AdminDataContext.Provider value={dashboardData}>
     <div style={{ display: "flex", minHeight: "100vh", background: BG }}>
       <AdminSidebar page={page} setPage={setPage} onBack={onBack} />
       <main style={{ marginLeft: SIDEBAR_W, flex: 1, padding: "28px 32px 60px", minWidth: 0, position: "relative" }}>
@@ -1161,6 +1011,6 @@ export function AdminDashboard({ onBack }: Props) {
           </div>
         </div>
       )}
-    </div>
+    </AdminDataContext.Provider>
   );
 }

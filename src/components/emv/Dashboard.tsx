@@ -9,84 +9,16 @@ import { Sidebar, Page } from "./Sidebar";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
+import { createContext, useContext, useEffect } from "react";
+import { getUserDashboardData } from "@/app/actions";
 
 const EMV_BLUE = "#29ABE2";
 const EMV_ORANGE = "#F7941D";
 const EMV_MAGENTA = "#EC008C";
 const BG = "#F4F6F9";
 
-// ── Data ──────────────────────────────────────────────────────────────────────
-
-const barData = [
-  { mes: "Ene", impacto: 3200, eventos: 8 },
-  { mes: "Feb", impacto: 4100, eventos: 11 },
-  { mes: "Mar", impacto: 3800, eventos: 9 },
-  { mes: "Abr", impacto: 5200, eventos: 14 },
-  { mes: "May", impacto: 6100, eventos: 16 },
-  { mes: "Jun", impacto: 5700, eventos: 13 },
-  { mes: "Jul", impacto: 7300, eventos: 19 },
-  { mes: "Ago", impacto: 8100, eventos: 22 },
-  { mes: "Sep", impacto: 7600, eventos: 18 },
-  { mes: "Oct", impacto: 9200, eventos: 24 },
-  { mes: "Nov", impacto: 10400, eventos: 27 },
-  { mes: "Dic", impacto: 11800, eventos: 31 },
-];
-
-
-const kpiCards = [
-  { label: "Personas Impactadas",   value: "12,480", delta: "+18%", icon: Users,      color: EMV_BLUE    },
-  { label: "Eventos Realizados",    value: "182",     delta: "+23%", icon: Calendar,   color: EMV_ORANGE  },
-  { label: "Programas Completados", value: "47",      delta: "+12%", icon: BookMarked, color: EMV_MAGENTA },
-  { label: "Aliados Activos",       value: "150",     delta: "+8%",  icon: Globe,      color: EMV_BLUE    },
-];
-
-type ContentItem = {
-  thumb: string;
-  title: string;
-  type: string;
-  date: string;
-  color: string;
-  description: string;
-  duration: string;
-  tier: string;
-  category: string;
-};
-
-const latestContent: ContentItem[] = [
-  {
-    thumb: "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=220&fit=crop&auto=format",
-    title: "Liderazgo con Propósito: Construyendo Equipos de Alto Valor",
-    type: "Webinar",
-    date: "5 Jun 2025",
-    color: EMV_BLUE,
-    description: "Descubre cómo los líderes exitosos construyen equipos centrados en valores compartidos. Este webinar interactivo explora estrategias prácticas para fomentar la confianza, la colaboración y el propósito en entornos organizacionales complejos.",
-    duration: "45 min",
-    tier: "Constructor",
-    category: "Webinars",
-  },
-  {
-    thumb: "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=400&h=220&fit=crop&auto=format",
-    title: "Cultura Organizacional y Valores Empresariales en 2025",
-    type: "Curso",
-    date: "28 May 2025",
-    color: EMV_ORANGE,
-    description: "Un curso completo sobre cómo diseñar e implementar una cultura organizacional sólida basada en valores. Incluye casos de estudio, herramientas de diagnóstico y frameworks de implementación.",
-    duration: "3h 20min",
-    tier: "Sembrador",
-    category: "Cursos",
-  },
-  {
-    thumb: "https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=400&h=220&fit=crop&auto=format",
-    title: "Reporte de Impacto Social Q2 — Comunidad EMV",
-    type: "Reporte",
-    date: "15 May 2025",
-    color: EMV_MAGENTA,
-    description: "Análisis detallado del impacto social generado por la comunidad de aliados durante el segundo trimestre de 2025. Incluye métricas clave, casos de éxito y proyecciones.",
-    duration: "20 pág.",
-    tier: "Aliado",
-    category: "Reportes",
-  },
-];
+// ── Context ───────────────────────────────────────────────────────────────────
+const DashboardDataContext = createContext<any>(null);
 
 
 
@@ -252,6 +184,14 @@ function HeroSection({ userTier }: { userTier: TierKey }) {
 }
 
 function KPICards() {
+  const data = useContext(DashboardDataContext);
+  
+  const kpiCards = [
+    { label: "Eventos Asistidos",     value: "0", delta: "0%", icon: Calendar,   color: EMV_ORANGE  },
+    { label: "Programas Completados", value: "0", delta: "0%", icon: BookMarked, color: EMV_MAGENTA },
+    { label: "Contenido Visto",       value: "0", delta: "0%",  icon: Play,      color: EMV_BLUE    },
+  ];
+
   return (
     <div className="grid grid-cols-4 gap-4 mb-6">
       {kpiCards.map((k) => (
@@ -306,60 +246,33 @@ function KPICards() {
 }
 
 function Charts() {
-  const tooltipStyle = {
-    background: "white",
-    border: "1px solid rgba(0,0,0,0.08)",
-    borderRadius: 10,
-    boxShadow: "0 4px 16px rgba(0,0,0,0.1)",
-    fontSize: 12,
-    fontFamily: "var(--font-sans)",
-  };
-
   return (
-    <div className="mb-6">
+    <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: 24, marginBottom: 24 }}>
       <div
         style={{
-          background: "white",
-          borderRadius: 16,
-          padding: "24px",
+          background: "white", borderRadius: 16, padding: "24px 28px 12px",
           border: "1px solid rgba(0,0,0,0.06)",
           boxShadow: "0 1px 3px rgba(0,0,0,0.04), 0 4px 12px rgba(0,0,0,0.04)",
         }}
       >
-        <div className="flex items-center justify-between mb-5">
-          <div>
-            <h3 style={{ fontSize: 15, fontWeight: 700, color: "#1F2937", margin: 0, fontFamily: "var(--font-display)" }}>
-              Personas Impactadas
-            </h3>
-            <p style={{ fontSize: 12, color: "#9CA3AF", margin: "2px 0 0", fontFamily: "var(--font-sans)" }}>
-              Crecimiento mensual 2025
-            </p>
-          </div>
-          <span
-            style={{
-              fontSize: 11, fontWeight: 700, color: EMV_BLUE,
-              background: `${EMV_BLUE}12`, padding: "3px 10px", borderRadius: 99,
-            }}
-          >
-            +68% anual
-          </span>
+        <h3 style={{ fontSize: 16, fontWeight: 700, color: "#1F2937", margin: "0 0 4px", fontFamily: "var(--font-display)" }}>
+          Evolución del Impacto 2025
+        </h3>
+        <p style={{ fontSize: 13, color: "#9CA3AF", margin: "0 0 24px", fontFamily: "var(--font-sans)" }}>
+          Requiere históricos en BD
+        </p>
+        <div style={{ height: 260, width: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "#9CA3AF", fontSize: 13 }}>
+          Sin datos suficientes
         </div>
-        <ResponsiveContainer width="100%" height={220}>
-          <BarChart data={barData} barSize={20}>
-            <CartesianGrid key="grid" strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
-            <XAxis key="x" dataKey="mes" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} />
-            <YAxis key="y" tick={{ fontSize: 11, fill: "#9CA3AF" }} axisLine={false} tickLine={false} width={45} />
-            <Tooltip key="tooltip" contentStyle={tooltipStyle} cursor={{ fill: "rgba(0,0,0,0.03)" }} />
-            <Bar key="bar-impacto" dataKey="impacto" fill={EMV_BLUE} radius={[6, 6, 0, 0]} name="Personas" />
-          </BarChart>
-        </ResponsiveContainer>
       </div>
     </div>
   );
 }
 
+function LatestContent({ onNavigate, onOpenModal }: { onNavigate?: (page: Page) => void; onOpenModal?: (item: any) => void }) {
+  const data = useContext(DashboardDataContext);
+  const content = data?.content || [];
 
-function LatestContent({ onNavigate, onOpenModal }: { onNavigate?: (page: Page) => void; onOpenModal?: (item: ContentItem) => void }) {
   return (
     <div
       style={{
@@ -402,9 +315,10 @@ function LatestContent({ onNavigate, onOpenModal }: { onNavigate?: (page: Page) 
       </div>
 
       <div className="grid grid-cols-3 gap-4">
-        {latestContent.map((c) => (
+        {content.length === 0 && <div style={{ fontSize: 13, color: "#9CA3AF" }}>No hay contenido disponible</div>}
+        {content.map((c: any) => (
           <div
-            key={c.title}
+            key={c.id}
             onClick={() => onOpenModal?.(c)}
             style={{
               borderRadius: 14,
@@ -417,7 +331,7 @@ function LatestContent({ onNavigate, onOpenModal }: { onNavigate?: (page: Page) 
             {/* Thumbnail */}
             <div style={{ position: "relative", height: 140, background: "#F3F4F6" }}>
               <img
-                src={c.thumb}
+                src={c.thumbnailUrl || "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&h=220&fit=crop&auto=format"}
                 alt={c.title}
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
@@ -428,7 +342,7 @@ function LatestContent({ onNavigate, onOpenModal }: { onNavigate?: (page: Page) 
                   left: 10,
                   padding: "3px 9px",
                   borderRadius: 99,
-                  background: c.color,
+                  background: EMV_BLUE,
                   color: "white",
                   fontSize: 10,
                   fontWeight: 700,
@@ -448,11 +362,9 @@ function LatestContent({ onNavigate, onOpenModal }: { onNavigate?: (page: Page) 
                   opacity: 0,
                   transition: "opacity 0.2s",
                   background: "rgba(0,0,0,0.3)",
-                  pointerEvents: "none",
                 }}
                 className="hover:opacity-100"
               >
-                <Play size={28} color="white" />
               </div>
             </div>
 
@@ -876,21 +788,40 @@ function MembershipJourney({ userTier, onUpgrade }: { userTier: TierKey; onUpgra
 
 // ── Main Dashboard ─────────────────────────────────────────────────────────────
 
-export function Dashboard({ onLogout, onNavigate, userTier = "Constructor", onUpgrade }: {
+export function Dashboard({ onLogout, onNavigate, userTier = "Constructor", onUpgrade, email }: {
   onLogout: () => void;
   onNavigate: (p: Page) => void;
   userTier?: TierKey;
   onUpgrade?: () => void;
+  email?: string;
 }) {
-  const [contentModalItem, setContentModalItem] = useState<ContentItem | null>(null);
+  const [contentModalItem, setContentModalItem] = useState<any | null>(null);
   const [notificationsModalOpen, setNotificationsModalOpen] = useState(false);
+  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleOpenContentModal = (item: ContentItem) => setContentModalItem(item);
+  useEffect(() => {
+    if (email) {
+      getUserDashboardData(email).then(res => {
+        if (res.success) setDashboardData(res.data);
+        setLoading(false);
+      });
+    } else {
+      setLoading(false);
+    }
+  }, [email]);
+
+  const handleOpenContentModal = (item: any) => setContentModalItem(item);
   const handleCloseContentModal = () => setContentModalItem(null);
   const handleOpenNotificationsModal = () => setNotificationsModalOpen(true);
   const handleCloseNotificationsModal = () => setNotificationsModalOpen(false);
 
+  if (loading) {
+    return <div style={{ display: "flex", minHeight: "100vh", background: BG, alignItems: "center", justifyContent: "center", color: "#6B7280" }}>Cargando datos...</div>;
+  }
+
   return (
+    <DashboardDataContext.Provider value={dashboardData}>
     <div style={{ display: "flex", minHeight: "100vh", background: BG, fontFamily: "var(--font-sans)" }}>
       <Sidebar currentPage="dashboard" onNavigate={onNavigate} onLogout={onLogout} userTier={userTier} />
       <main style={{ marginLeft: 220, flex: 1, padding: "32px 36px 56px", minWidth: 0 }}>
@@ -910,5 +841,6 @@ export function Dashboard({ onLogout, onNavigate, userTier = "Constructor", onUp
         <NotificationsModal onClose={handleCloseNotificationsModal} />
       )}
     </div>
+    </DashboardDataContext.Provider>
   );
 }

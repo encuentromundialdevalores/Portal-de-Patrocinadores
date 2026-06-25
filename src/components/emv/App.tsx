@@ -716,7 +716,7 @@ function AuthPanel({ onLogin, onAdminLogin, onRegisterComplete }: {
 
 type AppView = "auth" | "plans" | "payment" | "portal" | "admin";
 
-export default function App({ initialView = "auth", initialTier = "Constructor" }: { initialView?: AppView, initialTier?: string }) {
+export default function App({ initialView = "auth", initialTier = "Constructor", email }: { initialView?: AppView, initialTier?: string, email?: string }) {
   const [view, setView] = useState<AppView>(initialView);
   const [userTier, setUserTier] = useState<TierName>(initialTier as TierName);
   const [page, setPage] = useState<Page>("dashboard");
@@ -772,7 +772,7 @@ export default function App({ initialView = "auth", initialTier = "Constructor" 
       ) : page === "profile" ? (
         <Profile onNavigate={(p: any) => setPage(p)} onLogout={handleLogout} userTier={userTier} />
       ) : (
-        <Dashboard onLogout={handleLogout} onNavigate={(p: any) => setPage(p)} userTier={userTier} onUpgrade={() => setView("plans")} />
+        <Dashboard onLogout={handleLogout} onNavigate={(p: any) => setPage(p)} userTier={userTier} onUpgrade={() => setView("plans")} email={email} />
       )}
     </>
   );

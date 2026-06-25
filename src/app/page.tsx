@@ -27,5 +27,5 @@ export default async function Home() {
     initialTier = TIER_MAP[dbUser.membership.toLowerCase()] || dbUser.membership;
   }
 
-  return <EmvApp initialView={initialView as any} initialTier={initialTier} />;
+  return <EmvApp initialView={initialView as any} initialTier={initialTier} email={session?.user?.email || undefined} />;
 }
